@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pixel Basketball AI Jump</title>
+<style>
+  body { margin:0; background:#000; overflow:hidden; }
+  canvas {
+    display:block;
+    margin:auto;
+    background:#c68642;
+    image-rendering: pixelated;
+  }
+  #ui {
+    position:fixed;
+    top:10px;
+    left:10px;
+    color:white;
+    font-family:monospace;
+    background:rgba(0,0,0,0.6);
+    padding:10px;
+    border-radius:8px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game" width="900" height="500"></canvas>
+
+<div id="ui">
+⬅️➡️⬆️⬇️ Move Ball<br>
+SPACE = Jump Ball<br>
+Score: <span id="score">0</span><br>
+Level: <span id="level">1</span>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let score = 0;
+let level = 1;
+const groundY = 380;
+
+// INPUT
+const keys = {};
+window.addEventListener("keydown", e => keys[e.key] = true);
+window.addEventListener("keyup", e => keys[e.key] = false);
+
+// BALL
+const ball = {
+  x: 120, y: groundY, r: 18,
+  vx: 0, vy: 0,
+  gravity: 0.6,
+  jump: -18
+};
+
+// BASKET
+const basket = { x: 760, y: 170, w: 70, h: 10 };
+
+// AI PLAYERS
+let players = [];
+
+function spawnLevel() {
+  players = [];
+  const count = Math.max(3, level);
+  for (let i = 0; i < count; i++) {
+    players.push({
+      x: 300 + Math.random() * 300,
+      y: groundY,
+      vy: 0,
+      speed: 1 + Math.random() * level * 0.4,
+      jumpPower: -10 - level * 0.5,
+      brain: Math.random(),
+      shirt: i === 0 && level > 1 ? "#c0392b" : "#27ae60",
+      jumpCooldown: Math.random() * 60
+    });
+  }
+}
+spawnLevel();
+
+// UPDATE
+function update() {
+  // BALL CONTROL
+  ball.vx = 0;
+  if (keys["ArrowLeft"]) ball.vx = -5;
+  if (keys["ArrowRight"]) ball.vx = 5;
+  if (keys["ArrowUp"]) ball.y -= 4;
+  if (keys["ArrowDown"]) ball.y += 4;
+  if (keys[" "] && ball.y >= groundY) ball.vy = ball.jump;
+
+  ball.vy += ball.gravity;
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+
+  if (ball.y > groundY) {
+    ball.y = groundY;
+    ball.vy = 0;
+  }
+
+  // SCORE
+  if (
+    ball.x > basket.x &&
+    ball.x < basket.x + basket.w &&
+    ball.y < basket.y + 15 &&
+    ball.y > basket.y
+  ) {
+    score++;
+    level++;
+    document.getElementById("score").innerText = score;
+    document.getElementById("level").innerText = level;
+    resetBall();
+    spawnLevel();
+  }
+
+  // AI LOGIC (MOVE + JUMP)
+  players.forEach(p => {
+    // Horizontal movement
+    if (Math.random() < p.brain) {
+      if (ball.x < p.x) p.x -= p.speed;
+      if (ball.x > p.x) p.x += p.speed;
+    } else {
+      p.x += (Math.random() - 0.5) * p.speed;
+    }
+
+    // Jump logic
+    p.jumpCooldown--;
+    if (
+      p.jumpCooldown <= 0 &&
+      p.y >= groundY &&
+      Math.abs(ball.x - p.x) < 40
+    ) {
+      p.vy = p.jumpPower;
+      p.jumpCooldown = 60 + Math.random() * 60;
+    }
+
+    // Gravity
+    p.vy += ball.gravity;
+    p.y += p.vy;
+    if (p.y > groundY) {
+      p.y = groundY;
+      p.vy = 0;
+    }
+
+    // Collision
+    if (Math.abs(ball.x - p.x) < 25 && Math.abs(ball.y - p.y) < 40) {
+      resetBall();
+    }
+  });
+}
+
+function resetBall() {
+  ball.x = 120;
+  ball.y = groundY;
+  ball.vy = 0;
+}
+
+// DRAW PIXEL PLAYER
+function drawPlayer(p) {
+  // head
+  ctx.fillStyle = "#f5cba7";
+  ctx.fillRect(p.x, p.y - 16, 16, 16);
+
+  // eyes
+  ctx.fillStyle = "#000";
+  ctx.fillRect(p.x + 4, p.y - 11, 2, 2);
+  ctx.fillRect(p.x + 10, p.y - 11, 2, 2);
+
+  // body
+  ctx.fillStyle = p.shirt;
+  ctx.fillRect(p.x, p.y, 16, 22);
+
+  // arms
+  ctx.fillRect(p.x - 4, p.y + 4, 4, 14);
+  ctx.fillRect(p.x + 16, p.y + 4, 4, 14);
+
+  // legs
+  ctx.fillStyle = "#2c3e50";
+  ctx.fillRect(p.x + 2, p.y + 22, 4, 12);
+  ctx.fillRect(p.x + 10, p.y + 22, 4, 12);
+}
+
+// DRAW COURT
+function drawCourt() {
+  ctx.fillStyle = "#c68642";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, groundY + 12);
+  ctx.lineTo(canvas.width, groundY + 12);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(450, groundY + 12, 60, Math.PI, 0);
+  ctx.stroke();
+}
+
+// DRAW
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  drawCourt();
+
+  // BALL
+  ctx.fillStyle = "orange";
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // BASKET
+  ctx.fillStyle = "red";
+  ctx.fillRect(basket.x, basket.y, basket.w, basket.h);
+  ctx.fillStyle = "white";
+  ctx.fillRect(basket.x + 60, basket.y - 40, 5, 60);
+
+  players.forEach(drawPlayer);
+}
+
+// LOOP
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+
+</body>
+</html>

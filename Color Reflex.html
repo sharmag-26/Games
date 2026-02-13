@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Color Reflex</title>
+<style>
+body {
+  margin: 0;
+  background: #111;
+  font-family: Arial;
+  color: white;
+  text-align: center;
+}
+
+#game {
+  margin-top: 20vh;
+}
+
+#word {
+  font-size: 80px;
+  font-weight: bold;
+}
+
+#hud {
+  margin-top: 20px;
+  font-size: 20px;
+}
+
+#gameover {
+  font-size: 40px;
+  margin-top: 40px;
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+  <div id="word">READY</div>
+  <div id="hud">Score: <span id="score">0</span></div>
+  <div id="gameover">GAME OVER<br>Press SPACE to Restart</div>
+</div>
+
+<script>
+const wordEl = document.getElementById("word");
+const scoreEl = document.getElementById("score");
+const gameOverEl = document.getElementById("gameover");
+
+const colors = [
+  { name: "RED", key: "r", color: "red" },
+  { name: "BLUE", key: "b", color: "blue" },
+  { name: "GREEN", key: "g", color: "lime" },
+  { name: "YELLOW", key: "y", color: "yellow" }
+];
+
+let current;
+let score = 0;
+let speed = 2000;
+let timer;
+let gameRunning = true;
+
+/* NEW ROUND */
+function nextRound() {
+  if (!gameRunning) return;
+
+  let randomWord = colors[Math.floor(Math.random() * colors.length)];
+  let randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+  wordEl.innerText = randomWord.name;
+  wordEl.style.color = randomColor.color;
+
+  current = randomColor;
+
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    endGame();
+  }, speed);
+}
+
+/* KEY INPUT */
+document.addEventListener("keydown", e => {
+
+  if (!gameRunning && e.code === "Space") {
+    location.reload();
+  }
+
+  if (!gameRunning) return;
+
+  if (e.key === current.key) {
+    score++;
+    scoreEl.innerText = score;
+
+    speed *= 0.95; // gets faster
+    nextRound();
+  } else {
+    endGame();
+  }
+});
+
+/* GAME OVER */
+function endGame() {
+  gameRunning = false;
+  wordEl.innerText = "❌";
+  gameOverEl.style.display = "block";
+}
+
+/* START */
+nextRound();
+</script>
+
+</body>
+</html>
