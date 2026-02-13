@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Fashion Studio Fixed</title>
+<style>#helpBtn{
+  position:fixed;
+  top:15px;
+  right:15px;
+  padding:8px 15px;
+  background:#333;
+  color:white;
+  border:1px solid #555;
+  cursor:pointer;
+  z-index:1000;
+}
+
+#instructionsPopup{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.85);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+}
+
+.popupContent{
+  background:#1a1a1a;
+  padding:30px;
+  width:400px;
+  max-width:90%;
+  border:1px solid #444;
+  border-radius:8px;
+  text-align:center;
+}
+
+body{
+  margin:0;
+  font-family:Segoe UI, sans-serif;
+  background:#111;
+  color:#eee;
+  text-align:center;
+}
+#panel{
+  background:#1a1a1a;
+  padding:10px;
+  border-bottom:1px solid #333;
+}
+button{
+  margin:3px;
+  padding:5px 8px;
+  background:#222;
+  color:#eee;
+  border:1px solid #444;
+  cursor:pointer;
+  font-size:12px;
+}
+button:hover{ background:#333; }
+canvas{
+  display:block;
+  margin:auto;
+}
+.section{ margin-top:6px; }
+</style>
+</head>
+<body>
+
+
+<div id="panel">
+
+<div class="section">
+Hair:
+<button onclick="setOpt('hair','long')">Long</button>
+<button onclick="setOpt('hair','curly')">Curly</button>
+<button onclick="setOpt('hair','pony')">Pony</button>
+<button onclick="setOpt('hair','bob')">Bob</button>
+</div>
+
+<div class="section">
+Makeup:
+<button onclick="setOpt('makeup','natural')">Natural</button>
+<button onclick="setOpt('makeup','red')">Red</button>
+<button onclick="setOpt('makeup','pink')">Pink</button>
+<button onclick="setOpt('makeup','glow')">Glow</button>
+</div>
+
+<div class="section">
+Dress:
+<button onclick="setOpt('dress','gown')">Gown</button>
+<button onclick="setOpt('dress','elegant')">Elegant</button>
+<button onclick="setOpt('dress','modern')">Modern</button>
+</div>
+
+<div class="section">
+Accessory:
+<button onclick="setOpt('acc','crown')">Crown</button>
+<button onclick="setOpt('acc','glasses')">Glasses</button>
+<button onclick="setOpt('acc','necklace')">Necklace</button>
+<button onclick="setOpt('acc','bag')">Bag</button>
+</div>
+
+<div class="section">
+Background:
+<button onclick="setOpt('bg','studio')">Studio</button>
+<button onclick="setOpt('bg','sunset')">Sunset</button>
+<button onclick="setOpt('bg','runway')">Runway</button>
+<button onclick="setOpt('bg','city')">City</button>
+</div>
+
+</div>
+
+<canvas id="canvas" width="600" height="850"></canvas>
+
+<script>
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+
+let state={
+ hair:"long",
+ makeup:"natural",
+ dress:"gown",
+ acc:"crown",
+ bg:"studio"
+};
+
+function setOpt(type,val){
+ state[type]=val;
+}
+
+let blinkTimer=0;
+
+function drawBG(){
+ if(state.bg==="studio"){
+   ctx.fillStyle="#222";
+   ctx.fillRect(0,0,600,850);
+ }
+ if(state.bg==="sunset"){
+   let g=ctx.createLinearGradient(0,0,0,850);
+   g.addColorStop(0,"#ff9966");
+   g.addColorStop(1,"#330066");
+   ctx.fillStyle=g;
+   ctx.fillRect(0,0,600,850);
+ }
+ if(state.bg==="runway"){
+   ctx.fillStyle="#000";
+   ctx.fillRect(0,0,600,850);
+   ctx.fillStyle="#444";
+   ctx.fillRect(260,0,80,850);
+ }
+ if(state.bg==="city"){
+   ctx.fillStyle="#111";
+   ctx.fillRect(0,0,600,850);
+   ctx.fillStyle="#333";
+   for(let i=0;i<10;i++){
+     ctx.fillRect(i*60,450,40,400);
+   }
+ }
+}
+
+function drawGirl(){
+ const cx=300;
+
+ // legs
+ ctx.fillStyle="#f1c27d";
+ ctx.beginPath();
+ ctx.ellipse(cx-25,650,22,120,0,0,Math.PI*2);
+ ctx.ellipse(cx+25,650,22,120,0,0,Math.PI*2);
+ ctx.fill();
+
+ // shoes
+ ctx.fillStyle="#111";
+ ctx.beginPath();
+ ctx.ellipse(cx-25,790,35,18,0,0,Math.PI*2);
+ ctx.ellipse(cx+25,790,35,18,0,0,Math.PI*2);
+ ctx.fill();
+
+ // dress
+ ctx.fillStyle="#9b59b6";
+
+ ctx.beginPath();
+ if(state.dress==="gown"){
+   ctx.moveTo(cx-60,450);
+   ctx.bezierCurveTo(cx-220,600,cx-150,750,cx,820);
+   ctx.bezierCurveTo(cx+150,750,cx+220,600,cx+60,450);
+ }
+ else if(state.dress==="elegant"){
+   ctx.moveTo(cx-50,450);
+   ctx.bezierCurveTo(cx-140,600,cx-120,720,cx,770);
+   ctx.bezierCurveTo(cx+120,720,cx+140,600,cx+50,450);
+ }
+ else{
+   ctx.moveTo(cx-70,450);
+   ctx.bezierCurveTo(cx-100,520,cx-80,700,cx,760);
+   ctx.bezierCurveTo(cx+80,700,cx+100,520,cx+70,450);
+ }
+ ctx.closePath();
+ ctx.fill();
+
+ // torso
+ ctx.fillStyle="#f1c27d";
+ ctx.beginPath();
+ ctx.ellipse(cx,400,55,95,0,0,Math.PI*2);
+ ctx.fill();
+
+ // arms
+ ctx.beginPath();
+ ctx.ellipse(cx-100,450,28,140,0.4,0,Math.PI*2);
+ ctx.ellipse(cx+100,450,28,140,-0.4,0,Math.PI*2);
+ ctx.fill();
+
+ // neck
+ ctx.fillRect(cx-14,320,28,50);
+
+ // head
+ ctx.beginPath();
+ ctx.arc(cx,260,80,0,Math.PI*2);
+ ctx.fill();
+
+ // hair
+ ctx.fillStyle="#3e2723";
+ if(state.hair==="long"){
+   ctx.beginPath();
+   ctx.arc(cx,230,95,Math.PI,0);
+   ctx.fill();
+   ctx.fillRect(cx-95,230,190,250);
+ }
+ if(state.hair==="curly"){
+   for(let i=0;i<12;i++){
+     ctx.beginPath();
+     ctx.arc(cx-100+i*18,200,40,0,Math.PI*2);
+     ctx.fill();
+   }
+ }
+ if(state.hair==="pony"){
+   ctx.beginPath();
+   ctx.arc(cx,230,95,Math.PI,0);
+   ctx.fill();
+   ctx.fillRect(cx+70,230,30,200);
+ }
+ if(state.hair==="bob"){
+   ctx.fillRect(cx-95,210,190,100);
+ }
+
+ // eyes
+ let blink = (blinkTimer%300>280);
+ if(!blink){
+   ctx.fillStyle="#fff";
+   ctx.beginPath();
+   ctx.ellipse(cx-30,250,16,12,0,0,Math.PI*2);
+   ctx.ellipse(cx+30,250,16,12,0,0,Math.PI*2);
+   ctx.fill();
+
+   ctx.fillStyle="#000";
+   ctx.beginPath();
+   ctx.arc(cx-30,250,7,0,Math.PI*2);
+   ctx.arc(cx+30,250,7,0,Math.PI*2);
+   ctx.fill();
+ } else {
+   ctx.strokeStyle="#000";
+   ctx.beginPath();
+   ctx.moveTo(cx-45,250);
+   ctx.lineTo(cx-15,250);
+   ctx.moveTo(cx+15,250);
+   ctx.lineTo(cx+45,250);
+   ctx.stroke();
+ }
+
+ // smile
+ ctx.strokeStyle="#000";
+ ctx.lineWidth=3;
+ ctx.beginPath();
+ ctx.arc(cx,290,40,0,Math.PI);
+ ctx.stroke();
+
+ // lipstick
+ if(state.makeup==="red"){
+   ctx.strokeStyle="red";
+   ctx.lineWidth=4;
+   ctx.beginPath();
+   ctx.arc(cx,300,38,0,Math.PI);
+   ctx.stroke();
+ }
+ if(state.makeup==="pink"){
+   ctx.strokeStyle="pink";
+   ctx.lineWidth=4;
+   ctx.beginPath();
+   ctx.arc(cx,300,38,0,Math.PI);
+   ctx.stroke();
+ }
+ if(state.makeup==="glow"){
+   ctx.fillStyle="rgba(255,150,150,0.3)";
+   ctx.beginPath();
+   ctx.arc(cx-50,280,25,0,Math.PI*2);
+   ctx.arc(cx+50,280,25,0,Math.PI*2);
+   ctx.fill();
+ }
+
+ // accessories
+ if(state.acc==="crown"){
+   ctx.fillStyle="gold";
+   ctx.fillRect(cx-50,180,100,25);
+ }
+ if(state.acc==="glasses"){
+   ctx.strokeStyle="#000";
+   ctx.strokeRect(cx-50,240,35,25);
+   ctx.strokeRect(cx+15,240,35,25);
+ }
+ if(state.acc==="necklace"){
+   ctx.strokeStyle="gold";
+   ctx.beginPath();
+   ctx.arc(cx,380,50,0,Math.PI);
+   ctx.stroke();
+ }
+ if(state.acc==="bag"){
+   ctx.fillStyle="#4e342e";
+   ctx.fillRect(cx+120,520,50,50);
+ }
+}
+
+function loop(){
+ blinkTimer++;
+ drawBG();
+ drawGirl();
+ requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+<button id="helpBtn">Instructions</button>
+
+<div id="instructionsPopup">
+  <div class="popupContent">
+    <h2>Game Instructions</h2>
+<p>
+  • Click buttons to change hair styles<br>
+  • Choose makeup styles (natural, red, pink, glow)<br>
+  • Select different dress types<br>
+  • Add accessories like crown, glasses, necklace or bag<br>
+  • Change the background for different moods<br>
+  • Mix and match to create your favorite look<br>
+  • Press R to reset the page
+</p>
+
+
+    <button id="closeBtn">Close</button>
+  </div>
+</div>
+<script>
+window.addEventListener("DOMContentLoaded", function(){
+
+  const popup = document.getElementById("instructionsPopup");
+  const openBtn = document.getElementById("helpBtn");
+  const closeBtn = document.getElementById("closeBtn");
+
+  openBtn.addEventListener("click", function(){
+    popup.style.display = "flex";
+  });
+
+  closeBtn.addEventListener("click", function(){
+    popup.style.display = "none";
+  });
+
+});
+</script>
+</body>
+</html>

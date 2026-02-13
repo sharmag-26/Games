@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Treasure Runner</title>
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #1b1b1b;
+  font-family: Arial;
+  color: white;
+}
+
+#game {
+  width: 100vw;
+  height: 400px;
+  position: relative;
+  background: linear-gradient(#3a2c1a, #1b1b1b);
+  overflow: hidden;
+}
+
+#ground {
+  width: 100%;
+  height: 40px;
+  background: #654321;
+  position: absolute;
+  bottom: 0;
+}
+
+#player {
+  width: 40px;
+  height: 60px;
+  background: #00b4d8;
+  position: absolute;
+  bottom: 40px;
+  left: 100px;
+  border-radius: 10px;
+}
+
+#player::before {
+  content: "";
+  width: 30px;
+  height: 30px;
+  background: #ffd166;
+  border-radius: 50%;
+  position: absolute;
+  top: -30px;
+  left: 5px;
+}
+
+.spike {
+  width: 30px;
+  height: 40px;
+  background: crimson;
+  position: absolute;
+  bottom: 40px;
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+
+.coin {
+  width: 20px;
+  height: 20px;
+  background: gold;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 120px;
+}
+
+#hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+
+#gameover {
+  position: absolute;
+  top: 40%;
+  width: 100%;
+  text-align: center;
+  font-size: 30px;
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+  <div id="hud">Score: <span id="score">0</span></div>
+  <div id="player"></div>
+  <div id="ground"></div>
+  <div id="gameover">GAME OVER<br>Press R to Restart</div>
+</div>
+
+<script>
+const game = document.getElementById("game");
+const player = document.getElementById("player");
+const scoreText = document.getElementById("score");
+const gameOverText = document.getElementById("gameover");
+
+let y = 40;
+let vy = 0;
+let onGround = true;
+let gravity = 1;
+let speed = 5;
+let score = 0;
+let gameRunning = true;
+
+/* GAME LOOP */
+function loop() {
+  if (!gameRunning) return;
+
+  vy -= gravity;
+  y += vy;
+
+  if (y <= 40) {
+    y = 40;
+    vy = 0;
+    onGround = true;
+  }
+
+  player.style.bottom = y + "px";
+
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* JUMP */
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowUp" && onGround) {
+    vy = 18;
+    onGround = false;
+  }
+
+  if (!gameRunning && e.key === "r") location.reload();
+});
+
+/* SPAWN SPIKES */
+function spawnSpike() {
+  if (!gameRunning) return;
+
+  let spike = document.createElement("div");
+  spike.className = "spike";
+  spike.style.left = window.innerWidth + "px";
+  game.appendChild(spike);
+
+  let move = setInterval(() => {
+    spike.style.left = spike.offsetLeft - speed + "px";
+
+    if (hit(spike, player)) endGame();
+
+    if (spike.offsetLeft < -50) {
+      spike.remove();
+      clearInterval(move);
+    }
+  }, 20);
+}
+
+/* SPAWN COINS */
+function spawnCoin() {
+  if (!gameRunning) return;
+
+  let coin = document.createElement("div");
+  coin.className = "coin";
+  coin.style.left = window.innerWidth + "px";
+  game.appendChild(coin);
+
+  let move = setInterval(() => {
+    coin.style.left = coin.offsetLeft - speed + "px";
+
+    if (hit(coin, player)) {
+      score++;
+      scoreText.innerText = score;
+      coin.remove();
+      clearInterval(move);
+    }
+
+    if (coin.offsetLeft < -50) {
+      coin.remove();
+      clearInterval(move);
+    }
+  }, 20);
+}
+
+/* COLLISION */
+function hit(a, b) {
+  let r1 = a.getBoundingClientRect();
+  let r2 = b.getBoundingClientRect();
+  return (
+    r1.left < r2.right &&
+    r1.right > r2.left &&
+    r1.top < r2.bottom &&
+    r1.bottom > r2.top
+  );
+}
+
+/* END GAME */
+function endGame() {
+  gameRunning = false;
+  gameOverText.style.display = "block";
+}
+
+/* DIFFICULTY INCREASE */
+setInterval(() => {
+  speed += 0.2;
+}, 5000);
+
+setInterval(spawnSpike, 2000);
+setInterval(spawnCoin, 3000);
+</script>
+
+</body>
+</html>

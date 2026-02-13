@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Gravity Well</title>
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at center, #000 0%, #020617 80%);
+}
+canvas {
+  display: block;
+}
+</style>
+</head>
+
+<body>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+let asteroids = [];
+let gameRunning = true;
+
+canvas.addEventListener("mousemove", e => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+});
+
+document.addEventListener("keydown", e => {
+  if (!gameRunning && e.key === "r") location.reload();
+});
+
+function spawnAsteroid() {
+  let side = Math.floor(Math.random() * 4);
+  let x, y;
+
+  if (side === 0) { x = 0; y = Math.random() * canvas.height; }
+  if (side === 1) { x = canvas.width; y = Math.random() * canvas.height; }
+  if (side === 2) { x = Math.random() * canvas.width; y = 0; }
+  if (side === 3) { x = Math.random() * canvas.width; y = canvas.height; }
+
+  asteroids.push({
+    x,
+    y,
+    vx: (Math.random() - 0.5) * 2,
+    vy: (Math.random() - 0.5) * 2,
+    size: 6 + Math.random() * 6
+  });
+}
+
+function update() {
+  if (!gameRunning) return;
+
+  asteroids.forEach(a => {
+
+    let dx = mouse.x - a.x;
+    let dy = mouse.y - a.y;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+
+    let force = 100 / (dist + 20);
+
+    a.vx += dx / dist * force;
+    a.vy += dy / dist * force;
+
+    a.x += a.vx;
+    a.y += a.vy;
+
+    if (dist < 10) {
+      gameRunning = false;
+    }
+  });
+}
+
+function draw() {
+  ctx.fillStyle = "#020617";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // draw gravity core
+  ctx.beginPath();
+  ctx.arc(mouse.x, mouse.y, 12, 0, Math.PI * 2);
+  ctx.fillStyle = "#38bdf8";
+  ctx.fill();
+
+  // glow
+  ctx.beginPath();
+  ctx.arc(mouse.x, mouse.y, 30, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(56,189,248,0.2)";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  asteroids.forEach(a => {
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, a.size, 0, Math.PI * 2);
+    ctx.fillStyle = "#f97316";
+    ctx.fill();
+  });
+
+  if (!gameRunning) {
+    ctx.fillStyle = "white";
+    ctx.font = "40px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("💥 COLLAPSE 💥", canvas.width / 2, canvas.height / 2);
+    ctx.font = "20px Arial";
+    ctx.fillText("Press R to Restart", canvas.width / 2, canvas.height / 2 + 40);
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+setInterval(spawnAsteroid, 800);
+loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bird Adventure Levels</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: monospace;
+    }
+
+    #container {
+      position: relative;
+    }
+
+    canvas {
+      border: 6px solid #22c55e;
+      background: linear-gradient(#87ceeb, #dff6ff);
+    }
+
+    #ui {
+      position: absolute;
+      bottom: -70px;
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+    }
+
+    button {
+      padding: 12px 18px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+    }
+
+    #flyBtn { background: #22c55e; }
+    #rulesBtn { background: #38bdf8; }
+
+    #rulesBox {
+      position: absolute;
+      top: 60px;
+      left: 20px;
+      width: 420px;
+      background: rgba(0,0,0,0.85);
+      color: white;
+      padding: 15px;
+      border-radius: 12px;
+      display: none;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="container">
+  <canvas id="game" width="460" height="520"></canvas>
+
+  <div id="rulesBox">
+    <b>📜 GAME RULES</b><br><br>
+    🐦 Click <b>FLY</b> or press <b>SPACE</b> to fly<br>
+    🗼 Avoid towers<br>
+    🦅 Avoid enemy birds<br>
+    🎚️ Levels go from Easy → Hard<br>
+    🏆 Finish Level 3 to win<br>
+    ❌ Touching anything = Game Over
+  </div>
+
+  <div id="ui">
+    <button id="flyBtn">🐦 FLY</button>
+    <button id="rulesBtn">📜 RULES</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const flyBtn = document.getElementById("flyBtn");
+const rulesBtn = document.getElementById("rulesBtn");
+const rulesBox = document.getElementById("rulesBox");
+
+let bird = { x: 100, y: 250, vel: 0, wing: 0 };
+
+let gravity = 0.6;
+let lift = -9;
+
+let pipes = [];
+let enemies = [];
+
+let level = 1;
+let levelTime = 20;
+let levelStart = Date.now();
+let gameOver = false;
+
+function levelSettings() {
+  return [
+    {},
+    { speed: 3, enemyRate: 0 },
+    { speed: 4, enemyRate: 0.01 },
+    { speed: 5, enemyRate: 0.02 }
+  ][level];
+}
+
+function drawBird() {
+  ctx.fillStyle = "#facc15";
+  ctx.beginPath();
+  ctx.ellipse(bird.x, bird.y, 18, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#fde047";
+  ctx.beginPath();
+  ctx.ellipse(bird.x - 8, bird.y + Math.sin(bird.wing) * 8, 10, 6, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "black";
+  ctx.beginPath();
+  ctx.arc(bird.x + 8, bird.y - 2, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  bird.wing += 0.3;
+}
+
+function drawPipes() {
+  pipes.forEach(p => {
+    ctx.fillStyle = "#15803d";
+    ctx.fillRect(p.x, 0, 45, p.top);
+    ctx.fillRect(p.x, p.bottom, 45, canvas.height);
+  });
+}
+
+function drawEnemies() {
+  enemies.forEach(e => {
+    ctx.fillStyle = "#dc2626";
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y, 14, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "black";
+    ctx.fillRect(e.x - 5, e.y, 10, 2);
+  });
+}
+
+function updateBird() {
+  bird.vel += gravity;
+  bird.y += bird.vel;
+  if (bird.y < 0 || bird.y > canvas.height) endGame();
+}
+
+function updatePipes() {
+  let s = levelSettings().speed;
+  if (pipes.length === 0 || pipes[pipes.length - 1].x < 260) {
+    let h = Math.random() * 200 + 60;
+    pipes.push({ x: canvas.width, top: h, bottom: h + 140 });
+  }
+
+  pipes.forEach(p => {
+    p.x -= s;
+    if (
+      bird.x + 18 > p.x &&
+      bird.x - 18 < p.x + 45 &&
+      (bird.y - 12 < p.top || bird.y + 12 > p.bottom)
+    ) endGame();
+  });
+
+  pipes = pipes.filter(p => p.x + 45 > 0);
+}
+
+function updateEnemies() {
+  let rate = levelSettings().enemyRate;
+  if (Math.random() < rate) {
+    enemies.push({
+      x: canvas.width,
+      y: Math.random() * (canvas.height - 100) + 50
+    });
+  }
+
+  enemies.forEach(e => {
+    e.x -= 4;
+    if (Math.abs(bird.x - e.x) < 20 && Math.abs(bird.y - e.y) < 20) {
+      endGame();
+    }
+  });
+
+  enemies = enemies.filter(e => e.x > 0);
+}
+
+function drawHUD() {
+  ctx.fillStyle = "black";
+  ctx.font = "16px monospace";
+  ctx.fillText("LEVEL " + level, 10, 20);
+  ctx.fillText("TIME " + levelLeft(), 360, 20);
+}
+
+function levelLeft() {
+  return Math.max(0, levelTime - Math.floor((Date.now() - levelStart) / 1000));
+}
+
+function nextLevel() {
+  level++;
+  pipes = [];
+  enemies = [];
+  levelStart = Date.now();
+  if (level > 3) winGame();
+}
+
+function endGame() {
+  gameOver = true;
+  overlay("💀 GAME OVER");
+}
+
+function winGame() {
+  gameOver = true;
+  overlay("🏆 YOU WON!");
+}
+
+function overlay(text) {
+  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "white";
+  ctx.font = "32px monospace";
+  ctx.fillText(text, 120, 260);
+}
+
+function fly() {
+  if (!gameOver) bird.vel = lift;
+}
+
+flyBtn.onclick = fly;
+rulesBtn.onclick = () =>
+  rulesBox.style.display = rulesBox.style.display === "block" ? "none" : "block";
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") fly();
+});
+
+function loop() {
+  if (gameOver) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  updateBird();
+  updatePipes();
+  updateEnemies();
+
+  drawPipes();
+  drawEnemies();
+  drawBird();
+  drawHUD();
+
+  if (levelLeft() === 0) nextLevel();
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>

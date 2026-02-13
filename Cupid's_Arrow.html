@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Cupid's Arrow</title>
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: linear-gradient(#ffafcc, #ffc8dd);
+  font-family: Arial;
+}
+
+#game {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+#cupid {
+  width: 50px;
+  height: 60px;
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Cupid Body */
+#cupid::before {
+  content: "";
+  position: absolute;
+  width: 40px;
+  height: 60px;
+  background: #ff006e;
+  border-radius: 20px;
+  left: 5px;
+}
+
+.arrow {
+  width: 4px;
+  height: 20px;
+  background: gold;
+  position: absolute;
+}
+
+.heart {
+  position: absolute;
+  font-size: 28px;
+}
+
+#hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 18px;
+}
+
+#gameover {
+  position: absolute;
+  top: 40%;
+  width: 100%;
+  text-align: center;
+  font-size: 36px;
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+  <div id="hud">Love Points: <span id="score">0</span></div>
+  <div id="cupid"></div>
+  <div id="gameover">💔 GAME OVER 💔<br>Press R to Restart</div>
+</div>
+
+<script>
+const game = document.getElementById("game");
+const cupid = document.getElementById("cupid");
+const scoreText = document.getElementById("score");
+const gameOverText = document.getElementById("gameover");
+
+let cupidX = window.innerWidth / 2;
+let score = 0;
+let gameRunning = true;
+
+/* MOVE */
+document.addEventListener("keydown", e => {
+
+  if (!gameRunning && e.key === "r") location.reload();
+
+  if (e.key === "ArrowLeft") cupidX -= 20;
+  if (e.key === "ArrowRight") cupidX += 20;
+
+  if (e.code === "Space") shoot();
+
+  cupid.style.left = cupidX + "px";
+});
+
+/* SHOOT */
+function shoot() {
+  if (!gameRunning) return;
+
+  let arrow = document.createElement("div");
+  arrow.className = "arrow";
+  arrow.style.left = cupidX + 23 + "px";
+  arrow.style.bottom = "80px";
+  game.appendChild(arrow);
+
+  let move = setInterval(() => {
+    arrow.style.bottom = arrow.offsetTop - 10 + "px";
+
+    document.querySelectorAll(".heart").forEach(heart => {
+      if (hit(arrow, heart)) {
+        if (heart.innerText === "💔") {
+          endGame();
+        } else {
+          score++;
+          scoreText.innerText = score;
+        }
+        heart.remove();
+        arrow.remove();
+      }
+    });
+
+    if (arrow.offsetTop < 0) {
+      arrow.remove();
+      clearInterval(move);
+    }
+  }, 20);
+}
+
+/* SPAWN HEARTS */
+function spawnHeart() {
+  if (!gameRunning) return;
+
+  let heart = document.createElement("div");
+  heart.className = "heart";
+
+  // 80% good hearts, 20% broken hearts
+  heart.innerText = Math.random() < 0.2 ? "💔" : "❤️";
+
+  heart.style.left = Math.random() * (window.innerWidth - 40) + "px";
+  heart.style.top = "-40px";
+
+  game.appendChild(heart);
+
+  let move = setInterval(() => {
+    heart.style.top = heart.offsetTop + 4 + "px";
+
+    if (heart.offsetTop > window.innerHeight) {
+      heart.remove();
+      clearInterval(move);
+    }
+  }, 20);
+}
+
+/* COLLISION */
+function hit(a, b) {
+  let r1 = a.getBoundingClientRect();
+  let r2 = b.getBoundingClientRect();
+  return (
+    r1.left < r2.right &&
+    r1.right > r2.left &&
+    r1.top < r2.bottom &&
+    r1.bottom > r2.top
+  );
+}
+
+/* GAME OVER */
+function endGame() {
+  gameRunning = false;
+  gameOverText.style.display = "block";
+}
+
+setInterval(spawnHeart, 1000);
+</script>
+
+</body>
+</html>

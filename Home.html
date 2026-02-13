@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Ultimate Game Hub</title>
+<style>
+body{
+  margin:0;
+  font-family:Segoe UI, sans-serif;
+  background:linear-gradient(135deg,#0f0f14,#1a1a1a);
+  color:white;
+  text-align:center;
+}
+
+h1{
+  margin-top:40px;
+  font-size:42px;
+}
+
+.menu{
+  margin-top:40px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:20px;
+  padding:40px;
+}
+
+button{
+  padding:15px;
+  font-size:16px;
+  background:#222;
+  color:white;
+  border:1px solid #444;
+  cursor:pointer;
+  transition:0.2s;
+}
+
+button:hover{
+  background:#444;
+  transform:scale(1.05);
+}
+
+.footer{
+  margin-top:30px;
+  opacity:0.6;
+}
+</style>
+</head>
+<body>
+
+<h1>🎮 ULTIMATE GAME HUB</h1>
+
+<div class="menu">
+
+
+<button onclick="goTo('Duel_Arena.html')">Duel Arena</button>
+<button onclick="goTo('Love_Connect.html')">Love Connect</button>
+<button onclick="goTo('Gravity_Well.html')">Gravity Well</button>
+<button onclick="goTo('Cupid\'s_Arrow.html')">Cupid's Arrow</button>
+<button onclick="goTo('Misson_Adventure.html')">Misson Adventure</button>
+
+<button onclick="goTo('Fashion_Studio.html')">Fashion Studio</button>
+<button onclick="goTo('Ultimate_Princess_Glam_World.html')">Ultimate Princess Glam World</button>
+<button onclick="goTo('Neon_Dash.html')">Neon Dash</button>
+<button onclick="goTo('Sand_Simulator.html')">Sand Simulator</button>
+<button onclick="goTo('Basketball_Game.html')">Basketball Game</button>
+<button onclick="goTo('Adventure_Platformer.html')">Adventure Platformer</button>
+
+<button onclick="goTo('Gravity_Duel_2-player_Game.html')">Gravity Duel 2 Player</button>
+<button onclick="goTo('Black_Hole_Evolution.html')">Black Hole Evolution</button>
+<button onclick="goTo('Treasure_Runner.html')">Treasure Runner</button>
+<button onclick="goTo('Color_Reflex.html')">Color Reflex</button>
+<button onclick="goTo('Flappy_Bird_2.html')">Flappy Bird 2</button>
+<button onclick="goTo('Flappy_Bird.html')">Flappy Bird</button>
+
+</div>
+
+<div class="footer">
+All games loaded from same folder.
+</div>
+
+<script>
+function goTo(page){
+  window.location.href = page;
+}
+</script>
+
+</body>
+</html>
