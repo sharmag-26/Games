@@ -4,13 +4,55 @@
 <meta charset="UTF-8">
 <title>Adventure Platformer Ultimate</title>
 <style>
-body { margin:0; overflow:hidden; background:#87ceeb; }
+body { margin:0; overflow:hidden; background:#87ceeb; position:relative; }
 canvas { display:block; margin:auto; background:#cfefff; }
+
+/* Instructions UI */
+#rulesBtn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 40;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #38bdf8;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+#rulesBox {
+  position: absolute;
+  top: 60px;
+  right: 12px;
+  width: 320px;
+  background: rgba(0,0,0,0.85);
+  color: white;
+  padding: 12px;
+  border-radius: 10px;
+  display: none;
+  font-family: monospace;
+  font-size: 14px;
+  z-index: 40;
+}
 </style>
 </head>
 <body>
 
 <canvas id="game" width="1100" height="520"></canvas>
+
+<button id="rulesBtn">📜 INSTRUCTIONS</button>
+<div id="rulesBox">
+  <b>📜 GAME INSTRUCTIONS</b><br><br>
+  ← → : Move left / right<br>
+  ↑ : Jump (double jump available)<br>
+  X : Dash (short invincible burst)<br>
+  G : Glide (hold while in air)<br>
+  SHIFT : Shield (uses energy)<br>
+  SPACE : Shoot (when available)<br>
+  Objective: Collect all coins then touch the trophy to finish the level<br>
+  Lives: You have 5 lives; falling or taking damage reduces lives<br>
+</div>
 
 <script>
 const canvas = document.getElementById("game");
@@ -363,6 +405,15 @@ draw();
 requestAnimationFrame(loop);
 }
 loop();
+
+// Rules toggle (simple, mirrored from Flappy_Bird rules behavior)
+const rulesBtn = document.getElementById('rulesBtn');
+const rulesBox = document.getElementById('rulesBox');
+if(rulesBtn && rulesBox){
+  rulesBtn.onclick = () => {
+    rulesBox.style.display = rulesBox.style.display === 'block' ? 'none' : 'block';
+  }
+}
 </script>
 
 </body>
