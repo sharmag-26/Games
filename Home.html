@@ -44,6 +44,11 @@ button:hover{
   opacity:0.6;
 }
 </style>
+<style>
+  /* Instructions UI (added) */
+  #rulesBtn{position:fixed;top:10px;right:12px;z-index:40;padding:8px 12px;border-radius:8px;border:none;background:#38bdf8;color:#fff;font-family:monospace;font-weight:700;cursor:pointer}
+  #rulesBox{position:fixed;top:52px;right:12px;width:360px;background:rgba(0,0,0,0.85);color:#fff;padding:12px;border-radius:10px;display:none;font-family:monospace;font-size:14px;z-index:40}
+</style>
 </head>
 <body>
 
@@ -84,5 +89,16 @@ function goTo(page){
 }
 </script>
 
+<button id="rulesBtn">📜 INSTRUCTIONS</button>
+<div id="rulesBox">
+  <b>📜 SITE INSTRUCTIONS</b><br><br>
+  Use the main menu to select games. Each game page has its own instructions accessible via this button.<br>
+</div>
+
+<script>
+  const rulesBtn = document.getElementById('rulesBtn');
+  const rulesBox = document.getElementById('rulesBox');
+  if (rulesBtn && rulesBox) rulesBtn.onclick = () => { rulesBox.style.display = rulesBox.style.display === 'block' ? 'none' : 'block'; };
+</script>
 </body>
 </html>

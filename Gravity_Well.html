@@ -12,6 +12,11 @@ canvas {
   display: block;
 }
 </style>
+<style>
+  /* Instructions UI (added) */
+  #rulesBtn{position:fixed;top:10px;right:12px;z-index:40;padding:8px 12px;border-radius:8px;border:none;background:#38bdf8;color:#fff;font-family:monospace;font-weight:700;cursor:pointer}
+  #rulesBox{position:fixed;top:52px;right:12px;width:320px;background:rgba(0,0,0,0.85);color:#fff;padding:12px;border-radius:10px;display:none;font-family:monospace;font-size:14px;z-index:40}
+</style>
 </head>
 
 <body>
@@ -120,6 +125,17 @@ function loop() {
 
 setInterval(spawnAsteroid, 800);
 loop();
+</script>
+<button id="rulesBtn">📜 INSTRUCTIONS</button>
+<div id="rulesBox">
+  <b>📜 GAME INSTRUCTIONS</b><br><br>
+  Navigate objects around a gravity well — avoid being pulled in or use gravity to your advantage.<br>
+</div>
+
+<script>
+  const rulesBtn = document.getElementById('rulesBtn');
+  const rulesBox = document.getElementById('rulesBox');
+  if (rulesBtn && rulesBox) rulesBtn.onclick = () => { rulesBox.style.display = rulesBox.style.display === 'block' ? 'none' : 'block'; };
 </script>
 </body>
 </html>
