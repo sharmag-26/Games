@@ -1,27 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>About Hetwik & Harika</title>
-<style>
-  body{font-family:Arial,Helvetica,sans-serif;background:#f6f8fb;color:#111;margin:0;padding:40px}
-  .card{max-width:760px;margin:40px auto;padding:24px;background:#fff;border-radius:10px;box-shadow:0 6px 30px rgba(16,24,40,0.08)}
-  h1{margin-top:0;color:#0f172a}
-  .row{display:flex;gap:20px;align-items:center}
-  .avatar{width:120px;height:120px;border-radius:12px;background:linear-gradient(135deg,#60a5fa,#7c3aed);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:20px}
-  p{line-height:1.6}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>About Hetwik & Harika</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .about-hero{display:flex;gap:24px;align-items:center;background:linear-gradient(135deg,rgba(124,58,237,0.12),rgba(96,165,250,0.06));padding:28px;border-radius:14px;margin-bottom:22px}
+    .about-hero .title{flex:1}
+    .about-hero h1{margin:0;color:#fff;font-size:28px}
+    .about-hero p{margin:6px 0 0;color:var(--muted)}
+    .profiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+    .profile{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.12));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.04)}
+    .avatar-lg{width:100%;height:160px;border-radius:10px;background:linear-gradient(135deg,var(--accent-2),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:36px;margin-bottom:12px}
+    .bio{color:#d9eeff;line-height:1.5}
+    .actions{margin-top:14px;display:flex;gap:10px}
+    .btn-secondary{padding:10px 12px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);cursor:pointer}
+  </style>
 </head>
 <body>
-  <div class="card">
-    <div class="row">
-      <div class="avatar">H & H</div>
-      <div>
-        <h1>Hetwik & Harika</h1>
-        <p><strong>Brother & Sister.</strong> Hetwik and Harika are siblings who share a love for games and creativity. They enjoy building small web games, experimenting with pixel art, and learning to code together.</p>
-        <p>This site showcases some of their projects and experiments. If you'd like to add more information, photos, or contact details here, tell me what to include and I'll update the page.</p>
+
+  <header class="site-header">
+    <div class="logo"><div class="mark">GH</div><h2>Ultimate Game Hub</h2></div>
+    <nav><a href="Home.html">Home</a></nav>
+  </header>
+
+  <main class="container">
+    <section class="about-hero">
+      <div class="title">
+        <h1>About Hetwik & Harika</h1>
+        <p>Brother and sister — creative collaborators who love building web games, pixel art, and experiments.</p>
       </div>
-    </div>
-  </div>
+      <div style="min-width:120px;text-align:right">
+        <a class="btn-secondary" href="Home.html">← Back to Hub</a>
+      </div>
+    </section>
+
+    <section class="profiles">
+      <div class="profile">
+        <div class="avatar-lg">Hetwik</div>
+        <h3 style="margin:0;color:#fff">Hetwik</h3>
+        <p class="bio">A curious tinkerer who enjoys game mechanics, level design and bringing ideas to life with JavaScript. Likes pixel art and fast prototypes.</p>
+        <div class="actions">
+          <button class="btn-secondary">See Projects</button>
+          <button class="btn-secondary">Contact</button>
+        </div>
+      </div>
+
+      <div class="profile">
+        <div class="avatar-lg">Harika</div>
+        <h3 style="margin:0;color:#fff">Harika</h3>
+        <p class="bio">A designer at heart who loves colors, characters and creative UI. Focuses on art, styling and making games feel delightful.</p>
+        <div class="actions">
+          <button class="btn-secondary">See Art</button>
+          <button class="btn-secondary">Contact</button>
+        </div>
+      </div>
+    </section>
+
+    <section style="margin-top:22px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)">
+      <h3 style="margin-top:0;color:#fff">Why they make games</h3>
+      <p class="bio">Hetwik and Harika build games to learn, share and have fun. This collection is their playground — a place to experiment, learn coding concepts, and bring playful ideas to life.</p>
+    </section>
+
+  </main>
+
 </body>
 </html>
