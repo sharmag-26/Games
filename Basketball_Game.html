@@ -21,6 +21,35 @@
     padding:10px;
     border-radius:8px;
   }
+  /* Instructions UI */
+  #rulesBtn {
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    z-index: 40;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: none;
+    background: #38bdf8;
+    color: white;
+    font-family: monospace;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  #rulesBox {
+    position: fixed;
+    top: 52px;
+    right: 12px;
+    width: 300px;
+    background: rgba(0,0,0,0.85);
+    color: white;
+    padding: 12px;
+    border-radius: 10px;
+    display: none;
+    font-family: monospace;
+    font-size: 14px;
+    z-index: 40;
+  }
 </style>
 </head>
 <body>
@@ -32,6 +61,17 @@
 SPACE = Jump Ball<br>
 Score: <span id="score">0</span><br>
 Level: <span id="level">1</span>
+</div>
+
+<button id="rulesBtn">📜 INSTRUCTIONS</button>
+<div id="rulesBox">
+  <b>📜 GAME INSTRUCTIONS</b><br><br>
+  ← → : Move left / right<br>
+  ↑ ↓ : Minor vertical adjust<br>
+  SPACE : Jump the ball<br>
+  Objective: Guide the ball into the basket to score<br>
+  Levels increase with score and AI difficulty scales<br>
+  Tip: Use horizontal momentum and well-timed jumps<br>
 </div>
 
 <script>
@@ -225,6 +265,14 @@ function loop() {
   requestAnimationFrame(loop);
 }
 loop();
+// Rules toggle
+const rulesBtn = document.getElementById('rulesBtn');
+const rulesBox = document.getElementById('rulesBox');
+if (rulesBtn && rulesBox) {
+  rulesBtn.onclick = () => {
+    rulesBox.style.display = rulesBox.style.display === 'block' ? 'none' : 'block';
+  };
+}
 </script>
 
 </body>
