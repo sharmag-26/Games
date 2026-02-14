@@ -208,6 +208,12 @@ function handleBullets(shooter,target){
     if(target===p1) redWins++;
     else blueWins++;
 
+    // Update scoreboard UI immediately when a round is decided
+    const blueEl = document.getElementById("blueScore");
+    const redEl = document.getElementById("redScore");
+    if(blueEl) blueEl.innerText = String(blueWins);
+    if(redEl) redEl.innerText = String(redWins);
+
     if(blueWins>=winTarget || redWins>=winTarget){
       nextLevel();
     }else{
