@@ -9,8 +9,8 @@
 <body>
   <header class="hud">
     <div class="left">
-      <div class="coins">Coins: <span id="coinCount">0</span></div>
-      <div class="seeds">Seeds: <span id="seedCounts">0</span></div>
+      <div class="coins">Your Coins: <span id="coinCount">0</span></div>
+      <div class="seeds">Your Seeds: <span id="seedCounts">0</span></div>
     </div>
     <div class="center">
       <strong>Flower Garden</strong>
@@ -24,25 +24,40 @@
 
   <main class="wrap">
     <section id="gardenArea">
-      <div id="player" class="player">Gardener<div class="name">You</div></div>
-      <div id="npcs" class="npcs"></div>
-      <div id="coinsLayer" class="coinsLayer"></div>
+      <div id="plotsLayer" class="plotsLayer"></div>
       <div id="plantsLayer" class="plantsLayer"></div>
+      <div id="gardenersLayer" class="gardenersLayer"></div>
+      <div id="coinsLayer" class="coinsLayer"></div>
     </section>
 
     <aside class="panel">
-      <h3>Inventory</h3>
+      <h3>Your Inventory</h3>
       <div id="inventory"></div>
 
-      <h4>Selected Seed</h4>
+      <h4>Plant Seed</h4>
       <select id="seedSelect">
         <option value="none">-- none --</option>
       </select>
 
+      <h4>Trade Seeds</h4>
+      <div class="trade-controls">
+        <select id="tradePartner"></select>
+        <select id="tradeSeed"></select>
+        <input id="tradeQty" type="number" min="1" max="10" value="1">
+        <div class="trade-buttons">
+          <button id="buySeedBtn">Buy</button>
+          <button id="sellSeedBtn">Sell</button>
+        </div>
+      </div>
+
+      <h4>Community Gardeners</h4>
+      <div id="communityInventory"></div>
+
       <div class="meta">Objective: <span id="goalText">0/0</span></div>
       <div class="meta">Status: <span id="statusText">Ready</span></div>
+      <div id="tradeLog" class="trade-log"></div>
 
-      <p>Use A/D or Left/Right to move. Click inside the garden to plant selected seeds. Click mature flowers to harvest coins.</p>
+      <p>Each gardener has private space. Plant only inside your plot. Everyone grows and trades seeds.</p>
     </aside>
   </main>
 
