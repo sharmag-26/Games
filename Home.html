@@ -1,115 +1,149 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Ultimate Game Hub</title>
-<style>
-body{
-  margin:0;
-  font-family:Segoe UI, sans-serif;
-  background:linear-gradient(135deg,#0f0f14,#1a1a1a);
-  color:white;
-  text-align:center;
-}
-
-h1{
-  margin-top:40px;
-  font-size:42px;
-}
-
-.menu{
-  margin-top:40px;
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-  gap:20px;
-  padding:40px;
-}
-
-button{
-  padding:15px;
-  font-size:16px;
-  background:#222;
-  color:white;
-  border:1px solid #444;
-  cursor:pointer;
-  transition:0.2s;
-}
-
-button:hover{
-  background:#444;
-  transform:scale(1.05);
-}
-
-.footer{
-  margin-top:30px;
-  opacity:0.6;
-}
-</style>
-<style>
-  /* Instructions UI (added) */
-  #rulesBtn{position:fixed;top:10px;right:12px;z-index:40;padding:8px 12px;border-radius:8px;border:none;background:#38bdf8;color:#fff;font-family:monospace;font-weight:700;cursor:pointer}
-  #rulesBox{position:fixed;top:52px;right:12px;width:360px;background:rgba(0,0,0,0.85);color:#fff;padding:12px;border-radius:10px;display:none;font-family:monospace;font-size:14px;z-index:40}
-</style>
-</head>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ultimate Game Hub</title>
   <link rel="stylesheet" href="styles.css">
-</head>
+  <style>
+    .section-title { margin-top: 24px; font-size: 24px; text-align: left; }
+    .menu { margin-top: 16px; }
+    .file-list {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 10px;
+      text-align: left;
+    }
+    .file-link {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e6eef8;
+      text-decoration: none;
+      background: rgba(255, 255, 255, 0.03);
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      overflow-wrap: anywhere;
+    }
+    .file-link:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .game-link {
+      display: block;
+      padding: 15px;
+      font-size: 16px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: 0.2s;
+    }
+    .game-link:hover {
+      background: #444;
+      transform: scale(1.03);
+    }
+  </style>
 </head>
 <body>
+  <header class="site-header">
+    <div class="logo">
+      <div class="mark">GH</div>
+      <h2>Ultimate Game Hub</h2>
+    </div>
+    <nav>
+      <a href="About_Hetwik_Harika.html">About Hetwik & Harika</a>
+    </nav>
+  </header>
 
-<header class="site-header">
-  <div class="logo">
-    <div class="mark">GH</div>
-    <h2>Ultimate Game Hub</h2>
-  </div>
-  <nav>
-    <a href="About_Hetwik_Harika.html">About Hetwik & Harika</a>
-  </nav>
-</header>
+  <main class="container">
+    <h1>ULTIMATE GAME HUB</h1>
 
-<main class="container">
-<h1>🎮 ULTIMATE GAME HUB</h1>
+    <h2 class="section-title">Play Games</h2>
+    <div id="gameMenu" class="menu"></div>
 
-<div class="menu">
+    <h2 class="section-title">Browse All Project Files</h2>
+    <div id="fileList" class="file-list"></div>
 
+    <div class="footer">All files are linked below for direct browser access.</div>
+  </main>
 
-<button onclick="goTo('Duel_Arena.html')">Duel Arena</button>
-<button onclick="goTo('Love_Connect.html')">Love Connect</button>
-<button onclick="goTo('Gravity_Well.html')">Gravity Well</button>
-<button onclick="goTo('Cupid\'s_Arrow.html')">Cupid's Arrow</button>
-<button onclick="goTo('Misson_Adventure.html')">Misson Adventure</button>
+  <script>
+    const gamePages = [
+      { path: 'Duel_Arena.html', label: 'Duel Arena' },
+      { path: 'Love_Connect.html', label: 'Love Connect' },
+      { path: 'Gravity_Well.html', label: 'Gravity Well' },
+      { path: "Cupid's_Arrow.html", label: "Cupid's Arrow" },
+      { path: 'Misson_Adventure.html', label: 'Misson Adventure' },
+      { path: 'Fashion_Studio.html', label: 'Fashion Studio' },
+      { path: 'Ultimate_Princess_Glam_World.html', label: 'Ultimate Princess Glam World' },
+      { path: 'Neon_Dash.html', label: 'Neon Dash' },
+      { path: 'Sand_Simulator.html', label: 'Sand Simulator' },
+      { path: 'Basketball_Game.html', label: 'Basketball Game' },
+      { path: 'Adventure_Platformer.html', label: 'Adventure Platformer' },
+      { path: 'Gravity_Duel_2-player_Game.html', label: 'Gravity Duel 2 Player' },
+      { path: 'Black_Hole_Evolution.html', label: 'Black Hole Evolution' },
+      { path: 'Treasure_Runner.html', label: 'Treasure Runner' },
+      { path: 'Color_Reflex.html', label: 'Color Reflex' },
+      { path: 'Flappy_Bird_2.html', label: 'Flappy Bird 2' },
+      { path: 'Flappy_Bird.html', label: 'Flappy Bird' },
+      { path: 'Flower_Garden/index.html', label: 'Flower Garden' },
+      { path: 'About_Hetwik_Harika.html', label: 'About Hetwik & Harika' }
+    ];
 
-<button onclick="goTo('Fashion_Studio.html')">Fashion Studio</button>
-<button onclick="goTo('Ultimate_Princess_Glam_World.html')">Ultimate Princess Glam World</button>
-<button onclick="goTo('Neon_Dash.html')">Neon Dash</button>
-<button onclick="goTo('Sand_Simulator.html')">Sand Simulator</button>
-<button onclick="goTo('Basketball_Game.html')">Basketball Game</button>
-<button onclick="goTo('Adventure_Platformer.html')">Adventure Platformer</button>
+    const allFiles = [
+      'About_Hetwik_Harika.html',
+      'Adventure_Platformer.html',
+      'Basketball_Game.html',
+      'Black_Hole_Evolution.html',
+      'Color_Reflex.html',
+      "Cupid's_Arrow.html",
+      'Duel_Arena.html',
+      'Fashion_Studio.html',
+      'Flappy_Bird.html',
+      'Flappy_Bird_2.html',
+      'Flower_Garden/game.js',
+      'Flower_Garden/index.html',
+      'Flower_Garden/styles.css',
+      'global-touch.js',
+      'Gravity_Duel_2-player_Game.html',
+      'Gravity_Well.html',
+      'Home.html',
+      'index.html',
+      'Love_Connect.html',
+      'Misson_Adventure.html',
+      'Neon_Dash.html',
+      'README.md',
+      'Sand_Simulator.html',
+      'serve.bat',
+      'serve.ps1',
+      'styles.css',
+      'Treasure_Runner.html',
+      'Ultimate_Princess_Glam_World.html'
+    ];
 
-<button onclick="goTo('Gravity_Duel_2-player_Game.html')">Gravity Duel 2 Player</button>
-<button onclick="goTo('Black_Hole_Evolution.html')">Black Hole Evolution</button>
-<button onclick="goTo('Treasure_Runner.html')">Treasure Runner</button>
-<button onclick="goTo('Color_Reflex.html')">Color Reflex</button>
-<button onclick="goTo('Flappy_Bird_2.html')">Flappy Bird 2</button>
-<button onclick="goTo('Flappy_Bird.html')">Flappy Bird</button>
+    const gameMenu = document.getElementById('gameMenu');
+    const fileList = document.getElementById('fileList');
 
-<!-- About link for Hetwik & Harika -->
-<button onclick="goTo('About_Hetwik_Harika.html')">About Hetwik & Harika</button>
+    gamePages.forEach((game) => {
+      const link = document.createElement('a');
+      link.className = 'game-link';
+      link.href = game.path;
+      link.textContent = game.label;
+      gameMenu.appendChild(link);
+    });
 
-</div>
+    allFiles.forEach((filePath) => {
+      const link = document.createElement('a');
+      link.className = 'file-link';
+      link.href = filePath;
+      link.textContent = filePath;
+      fileList.appendChild(link);
+    });
+  </script>
 
-<div class="footer">
-  All games loaded from same folder.
-</div>
-
-</main>
-
-<script>
-function goTo(page){
-  window.location.href = page;
-}
-</script>
-
-</main>
-<script src="global-touch.js"></script>
+  <script src="global-touch.js"></script>
 </body>
 </html>

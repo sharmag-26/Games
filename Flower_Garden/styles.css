@@ -1,0 +1,26 @@
+:root{--bg:#e8f7ea;--dirt:#7a5230;--panel:#ffffff}
+*{box-sizing:border-box;font-family:Segoe UI,Arial,Helvetica,sans-serif}
+body{margin:0;background:var(--bg);color:#123;padding:0}
+.hud{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:linear-gradient(180deg,#fff,#dff3df);border-bottom:1px solid #cbd;gap:10px}
+.hud .coins,.hud .seeds{font-weight:700}
+.hud .center{text-align:center;line-height:1.25}
+.hud .center strong{display:block;font-size:18px}
+#roundInfo{font-size:13px;opacity:.9}
+.wrap{display:grid;grid-template-columns:1fr 300px;gap:10px;padding:12px}
+#gardenArea{position:relative;height:620px;background:linear-gradient(#a7e4a1,#8ad07f);border-radius:8px;border:2px solid #b7e6b5;overflow:hidden}
+.panel{width:300px;background:var(--panel);padding:12px;border-radius:8px;border:1px solid #ddd}
+.player{position:absolute;bottom:40px;left:40px;font-size:16px;font-weight:700;transform:translateX(-50%);text-align:center;background:rgba(255,255,255,0.8);padding:8px 10px;border-radius:8px}
+.player .name{font-size:12px;background:rgba(255,255,255,0.8);padding:2px 6px;border-radius:6px;margin-top:6px}
+.npcs .npc{position:absolute;font-size:15px;text-align:center;background:rgba(255,255,255,0.75);padding:4px 6px;border-radius:8px}
+.coinsLayer .coin{position:absolute;font-size:20px;cursor:pointer;user-select:none}
+.plantsLayer .plant{position:absolute;bottom:0;left:0;transform:translateX(-50%);text-align:center;cursor:pointer}
+.plant .grow{font-size:24px}
+.plant .label{font-size:12px;margin-top:4px}
+.plant .hint{font-size:11px;opacity:.8}
+.plant.mature .hint{color:#1e7a1e;font-weight:700}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center}
+.modal .modal-content{background:#fff;padding:18px;border-radius:10px;width:360px}
+button{cursor:pointer;padding:8px 10px;border-radius:6px;border:1px solid #aaa;background:#fff}
+.meta{margin-top:10px;font-size:14px}
+
+@media(max-width:880px){.wrap{grid-template-columns:1fr}.panel{width:100%}.hud{flex-direction:column;align-items:flex-start}.hud .center{text-align:left}}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Flower Garden</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hud">
+    <div class="left">
+      <div class="coins">Coins: <span id="coinCount">0</span></div>
+      <div class="seeds">Seeds: <span id="seedCounts">0</span></div>
+    </div>
+    <div class="center">
+      <strong>Flower Garden</strong>
+      <div id="roundInfo">Level 1 | Goal 0/0 | Time 0s</div>
+    </div>
+    <div class="right">
+      <button id="shopBtn">Shop</button>
+      <button id="resetBtn">Reset</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="gardenArea">
+      <div id="player" class="player">Gardener<div class="name">You</div></div>
+      <div id="npcs" class="npcs"></div>
+      <div id="coinsLayer" class="coinsLayer"></div>
+      <div id="plantsLayer" class="plantsLayer"></div>
+    </section>
+
+    <aside class="panel">
+      <h3>Inventory</h3>
+      <div id="inventory"></div>
+
+      <h4>Selected Seed</h4>
+      <select id="seedSelect">
+        <option value="none">-- none --</option>
+      </select>
+
+      <div class="meta">Objective: <span id="goalText">0/0</span></div>
+      <div class="meta">Status: <span id="statusText">Ready</span></div>
+
+      <p>Use A/D or Left/Right to move. Click inside the garden to plant selected seeds. Click mature flowers to harvest coins.</p>
+    </aside>
+  </main>
+
+  <div id="shopModal" class="modal">
+    <div class="modal-content">
+      <h3>Shop - Buy Seeds</h3>
+      <div class="shopItems"></div>
+      <button id="closeShop">Close</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
