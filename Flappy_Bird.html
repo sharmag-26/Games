@@ -78,6 +78,13 @@
     <button id="flyBtn">🐦 FLY</button>
     <button id="rulesBtn">📜 RULES</button>
   </div>
+  <!-- Start overlay -->
+  <div id="startOverlay" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:50;pointer-events:none">
+    <div id="startBox" style="background:rgba(255,255,255,0.95);padding:18px;border-radius:10px;text-align:center;pointer-events:auto;">
+      <h2 style="margin:0 0 8px">Bird Adventure</h2>
+      <button id="playBtn" style="padding:10px 16px;font-size:16px;border-radius:8px;background:#22c55e;color:white;border:none;cursor:pointer">▶ PLAY</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -95,6 +102,8 @@ let lift = -9;
 
 let pipes = [];
 let enemies = [];
+
+let started = false; // game waits for Play
 
 let level = 1;
 let levelTime = 20;
@@ -150,12 +159,21 @@ function drawEnemies() {
 }
 
 function updateBird() {
+  if (!started) {
+    // idle bob until game starts
+    bird.y = canvas.height/2 + Math.sin(Date.now()/300) * 8;
+    bird.vel = 0;
+    return;
+  }
+
   bird.vel += gravity;
   bird.y += bird.vel;
   if (bird.y < 0 || bird.y > canvas.height) endGame();
 }
 
 function updatePipes() {
+  if (!started) return; // don't spawn or move pipes before Play
+
   let s = levelSettings().speed;
   if (pipes.length === 0 || pipes[pipes.length - 1].x < 260) {
     let h = Math.random() * 200 + 60;
@@ -175,6 +193,8 @@ function updatePipes() {
 }
 
 function updateEnemies() {
+  if (!started) return; // no enemies before Play
+
   let rate = levelSettings().enemyRate;
   if (Math.random() < rate) {
     enemies.push({
@@ -231,6 +251,7 @@ function overlay(text) {
 }
 
 function fly() {
+  if (!started) startGame();
   if (!gameOver) bird.vel = lift;
 }
 
@@ -241,6 +262,16 @@ rulesBtn.onclick = () =>
 document.addEventListener("keydown", e => {
   if (e.code === "Space") fly();
 });
+
+// start button handler
+const playBtn = document.getElementById('playBtn');
+const startOverlay = document.getElementById('startOverlay');
+function startGame(){
+  started = true;
+  levelStart = Date.now();
+  if(startOverlay) startOverlay.style.display = 'none';
+}
+if(playBtn) playBtn.onclick = startGame;
 
 function loop() {
   if (gameOver) return;
