@@ -8,8 +8,9 @@ body{margin:0;background:radial-gradient(circle at 20% 0,#f3fbef,#dcefd7 42%,#c7
 #roundInfo{font-size:13px;opacity:.9}
 .wrap{display:grid;grid-template-columns:1fr 330px;gap:12px;padding:12px}
 
-#gardenArea{position:relative;height:640px;border-radius:14px;overflow:hidden;border:2px solid #aac79f;background:linear-gradient(180deg,#9ed193 0,#84be78 40%,#6aa35f 100%);perspective:980px}
-#gardenArea::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0,rgba(255,255,255,.04) 1px,transparent 1px,transparent 80px);pointer-events:none}
+#gardenArea{position:relative;height:640px;border-radius:14px;overflow:hidden;border:2px solid #aac79f;background:linear-gradient(180deg,#c7e8ff 0,#9fd488 34%,#7bb76d 62%,#5e9654 100%);background-size:120% 120%;perspective:1100px}
+#gardenArea::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 78% 12%,rgba(255,255,255,.35),transparent 33%),repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0,rgba(255,255,255,.04) 1px,transparent 1px,transparent 80px);pointer-events:none}
+#gardenArea::after{content:"";position:absolute;right:46px;top:30px;width:88px;height:88px;border-radius:50%;background:radial-gradient(circle,#fff6b1 0,#ffd465 52%,#f4b93d 76%,rgba(244,185,61,.25) 100%);box-shadow:0 0 26px rgba(255,224,120,.85),0 0 70px rgba(255,203,92,.45);pointer-events:none}
 
 .plotsLayer,.plantsLayer,.gardenersLayer,.coinsLayer{position:absolute;inset:0}
 
@@ -17,20 +18,45 @@ body{margin:0;background:radial-gradient(circle at 20% 0,#f3fbef,#dcefd7 42%,#c7
 .plot::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.13) 0,rgba(0,0,0,.13) 2px,transparent 2px,transparent 26px);opacity:.44}
 .plot-label{position:absolute;bottom:38px;transform:translateX(-50%);font-size:12px;font-weight:700;color:#123b26;background:rgba(255,255,255,.82);padding:3px 8px;border-radius:8px;border:1px solid rgba(0,0,0,.08)}
 
-.gardener{position:absolute;bottom:16px;transform:translateX(-50%);width:52px;height:108px}
+.gardener{position:absolute;bottom:16px;transform:translateX(-50%);width:52px;height:108px;filter:drop-shadow(0 8px 6px rgba(0,0,0,.22))}
 .gardener .hat{position:absolute;left:10px;top:2px;width:30px;height:12px;background:#cfa86f;border-radius:14px;border:1px solid rgba(0,0,0,.2)}
 .gardener .head{position:absolute;left:16px;top:12px;width:20px;height:20px;border-radius:50%;background:#f3c8a8;border:1px solid rgba(0,0,0,.15)}
 .gardener .body{position:absolute;left:11px;top:30px;width:30px;height:38px;border-radius:9px;background:linear-gradient(180deg,#3e7f4f,#205e32);border:1px solid rgba(0,0,0,.2)}
+.gardener .arm{position:absolute;top:39px;width:7px;height:26px;background:#ddb08f;border-radius:6px}
+.gardener .arm.left{left:6px;transform:rotate(12deg)}
+.gardener .arm.right{right:6px;transform:rotate(-12deg)}
 .gardener .tool{position:absolute;left:2px;top:40px;width:8px;height:42px;background:linear-gradient(180deg,#c49b61,#9c7448);border-radius:4px;transform:rotate(10deg)}
 .gardener .tag{position:absolute;left:50%;top:74px;transform:translateX(-50%);font-size:11px;font-weight:700;background:rgba(255,255,255,.85);padding:2px 6px;border-radius:6px;white-space:nowrap}
+.gardener.waving .arm.left{animation:swing-left .25s infinite alternate}
+.gardener.waving .arm.right{animation:swing-right .25s infinite alternate}
+
+.player-avatar{position:absolute;left:100px;top:420px;width:62px;height:130px;transform:translate(-50%,-50%) scale(var(--scale,1));transform-origin:center bottom;z-index:4;filter:drop-shadow(0 14px 8px rgba(0,0,0,.25))}
+.player-avatar .hat{position:absolute;left:16px;top:4px;width:30px;height:13px;background:linear-gradient(180deg,#d9b177,#b7894e);border-radius:14px;border:1px solid rgba(0,0,0,.2)}
+.player-avatar .head{position:absolute;left:20px;top:14px;width:22px;height:22px;border-radius:50%;background:linear-gradient(180deg,#f5d2b7,#e7b996);border:1px solid rgba(0,0,0,.16)}
+.player-avatar .body{position:absolute;left:15px;top:34px;width:32px;height:45px;border-radius:10px;background:linear-gradient(180deg,#477f51,#215f33);border:1px solid rgba(0,0,0,.24)}
+.player-avatar .arm{position:absolute;top:40px;width:8px;height:28px;background:#e0b293;border-radius:6px}
+.player-avatar .arm.left{left:9px;transform:rotate(8deg)}
+.player-avatar .arm.right{right:9px;transform:rotate(-10deg)}
+.player-avatar .tool{position:absolute;left:3px;top:46px;width:8px;height:44px;background:linear-gradient(180deg,#d1ab73,#8f6a41);border-radius:4px;transform:rotate(9deg)}
+.player-avatar .tag{position:absolute;left:50%;top:84px;transform:translateX(-50%);font-size:11px;font-weight:700;background:rgba(255,255,255,.9);padding:2px 7px;border-radius:7px;white-space:nowrap}
+.player-avatar .shadow{position:absolute;left:11px;bottom:8px;width:40px;height:12px;background:rgba(0,0,0,.3);border-radius:50%;filter:blur(1px)}
+.player-avatar.walking .arm.left{animation:swing-left .32s infinite alternate}
+.player-avatar.walking .arm.right{animation:swing-right .32s infinite alternate}
+.player-avatar.waving .arm.left{animation:swing-left .2s infinite alternate}
+.player-avatar.waving .arm.right{animation:swing-right .2s infinite alternate}
+@keyframes swing-left{from{transform:rotate(20deg)}to{transform:rotate(-6deg)}}
+@keyframes swing-right{from{transform:rotate(-22deg)}to{transform:rotate(4deg)}}
 
 .plantsLayer .plant{position:absolute;bottom:84px;transform:translateX(-50%);text-align:center;cursor:pointer;user-select:none}
 .plant .grow{font-size:24px;line-height:1}
 .plant .label{font-size:12px;font-weight:600;background:rgba(255,255,255,.82);border-radius:6px;padding:1px 6px;margin-top:2px}
 .plant .hint{font-size:11px;opacity:.85}
 .plant.mature .hint{color:#195e2d;font-weight:700}
+.plant.watered{filter:drop-shadow(0 0 6px rgba(114,189,255,.8))}
 
 .coinsLayer .coin{position:absolute;font-size:20px;cursor:pointer;user-select:none;filter:drop-shadow(0 2px 1px rgba(0,0,0,.4))}
+.water-pop{position:absolute;font-size:16px;color:#2f76ba;font-weight:700;pointer-events:none;animation:water-rise .8s ease-out forwards}
+@keyframes water-rise{from{transform:translate(-50%,0);opacity:1}to{transform:translate(-50%,-18px);opacity:0}}
 
 .panel{width:330px;background:var(--panel);padding:12px;border-radius:10px;border:1px solid #d8e5d3}
 button{cursor:pointer;padding:8px 10px;border-radius:7px;border:1px solid #9fb89c;background:#f8fff5}
@@ -46,4 +72,59 @@ h3,h4{margin:8px 0}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center}
 .modal .modal-content{background:#fff;padding:18px;border-radius:10px;width:360px}
 
-@media(max-width:980px){.wrap{grid-template-columns:1fr}.panel{width:100%}.hud{flex-direction:column;align-items:flex-start}.hud .center{text-align:left}}
+.touch-controls{display:none}
+.touch-btn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+
+@media(max-width:980px){
+  .wrap{grid-template-columns:1fr}
+  .panel{width:100%}
+  .hud{flex-direction:column;align-items:flex-start}
+  .hud .center{text-align:left}
+  #gardenArea{height:56svh;min-height:420px}
+}
+
+@media(max-width:760px){
+  .wrap{padding:8px;gap:8px;padding-bottom:168px}
+  .panel{padding:10px}
+  .trade-controls{grid-template-columns:1fr}
+  button,select,input{min-height:44px;font-size:16px}
+  .trade-log{max-height:72px}
+
+  .touch-controls{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:90;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    padding:10px;
+    background:linear-gradient(180deg,rgba(236,248,232,.82),rgba(218,236,211,.96));
+    border-top:1px solid #b7ccb1;
+    backdrop-filter:blur(5px);
+  }
+  .dpad{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,44px);
+    gap:8px;
+    max-width:220px;
+  }
+  .dpad .up{grid-column:2;grid-row:1}
+  .dpad .left{grid-column:1;grid-row:2}
+  .dpad .right{grid-column:3;grid-row:2}
+  .dpad .down{grid-column:2;grid-row:3}
+  .touch-actions{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  .touch-btn{
+    border:1px solid #91ae8f;
+    border-radius:10px;
+    background:linear-gradient(180deg,#f9fff6,#e8f6e3);
+    font-weight:700;
+    font-size:14px;
+  }
+}

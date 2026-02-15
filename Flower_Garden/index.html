@@ -27,6 +27,16 @@
       <div id="plotsLayer" class="plotsLayer"></div>
       <div id="plantsLayer" class="plantsLayer"></div>
       <div id="gardenersLayer" class="gardenersLayer"></div>
+      <div id="playerAvatar" class="player-avatar">
+        <div class="hat"></div>
+        <div class="head"></div>
+        <div class="body"></div>
+        <div class="arm left"></div>
+        <div class="arm right"></div>
+        <div class="tool"></div>
+        <div class="tag">You</div>
+        <div class="shadow"></div>
+      </div>
       <div id="coinsLayer" class="coinsLayer"></div>
     </section>
 
@@ -50,6 +60,12 @@
         </div>
       </div>
 
+      <h4>Actions</h4>
+      <div class="trade-buttons">
+        <button id="waterBtn">Water (R)</button>
+        <button id="waveBtn">Wave (F)</button>
+      </div>
+
       <h4>Community Gardeners</h4>
       <div id="communityInventory"></div>
 
@@ -57,9 +73,23 @@
       <div class="meta">Status: <span id="statusText">Ready</span></div>
       <div id="tradeLog" class="trade-log"></div>
 
-      <p>Each gardener has private space. Plant only inside your plot. Everyone grows and trades seeds.</p>
+      <p>Move with W/A/S/D or Arrow keys. Press Space (or E) to plant, R to water nearby plants, and F to wave to other gardeners.</p>
     </aside>
   </main>
+
+  <div id="touchControls" class="touch-controls" aria-label="Touch controls">
+    <div class="dpad">
+      <button class="touch-btn up" data-touch-key="arrowup">Up</button>
+      <button class="touch-btn left" data-touch-key="arrowleft">Left</button>
+      <button class="touch-btn right" data-touch-key="arrowright">Right</button>
+      <button class="touch-btn down" data-touch-key="arrowdown">Down</button>
+    </div>
+    <div class="touch-actions">
+      <button class="touch-btn action" data-touch-action="plant">Plant</button>
+      <button class="touch-btn action" data-touch-action="water">Water</button>
+      <button class="touch-btn action" data-touch-action="wave">Wave</button>
+    </div>
+  </div>
 
   <div id="shopModal" class="modal">
     <div class="modal-content">

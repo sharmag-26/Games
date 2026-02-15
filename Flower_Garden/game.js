@@ -18,16 +18,22 @@
   const tradeQtyEl = document.getElementById('tradeQty');
   const buySeedBtn = document.getElementById('buySeedBtn');
   const sellSeedBtn = document.getElementById('sellSeedBtn');
+  const waterBtn = document.getElementById('waterBtn');
+  const waveBtn = document.getElementById('waveBtn');
   const tradeLogEl = document.getElementById('tradeLog');
+  const touchControls = document.getElementById('touchControls');
 
   const garden = document.getElementById('gardenArea');
   const plotsLayer = document.getElementById('plotsLayer');
   const plantsLayer = document.getElementById('plantsLayer');
   const gardenersLayer = document.getElementById('gardenersLayer');
+  const playerAvatar = document.getElementById('playerAvatar');
   const coinsLayer = document.getElementById('coinsLayer');
 
-  const STORAGE_KEY = 'flower_garden_state_v3';
+  const STORAGE_KEY = 'flower_garden_state_v4';
   const ROUND_SECONDS = 90;
+  const PLAYER_SPEED_X = 230;
+  const PLAYER_SPEED_DEPTH = 0.95;
 
   const seedTypes = {
     rose: { icon: 'R', cost: 5, growTime: 8, payout: 7 },
@@ -63,6 +69,14 @@
   let roundProgress = 0;
 
   const plotBounds = {};
+  const keys = {};
+  const player = {
+    x: 120,
+    depth: 0.66,
+    moving: false,
+    plantedCooldownMs: 0,
+    waveCooldownMs: 0
+  };
 
   function getGoalForLevel(level) {
     return 18 + level * 7;
@@ -73,7 +87,9 @@
   }
 
   function seedSummary(seedMap) {
-    return Object.keys(seedTypes).map((seed) => `${seed}:${seedMap[seed]}`).join(' ');
+    return Object.keys(seedTypes)
+      .map((seed) => `${seed}:${seedMap[seed]}`)
+      .join(' ');
   }
 
   function pushLog(message) {
@@ -170,6 +186,33 @@
     });
   }
 
+  function youPlotCenterX() {
+    const bounds = plotBounds.you;
+    if (!bounds) return 120;
+    return (bounds.left + bounds.right) / 2;
+  }
+
+  function keepPlayerInsideOwnPlot() {
+    const bounds = plotBounds.you;
+    if (!bounds) return;
+    player.x = Math.max(bounds.left + 24, Math.min(bounds.right - 24, player.x));
+    player.depth = Math.max(0.12, Math.min(0.95, player.depth));
+  }
+
+  function renderPlayer() {
+    const top = 128 + player.depth * 370;
+    const scale = 0.58 + player.depth * 0.62;
+    playerAvatar.style.left = `${player.x}px`;
+    playerAvatar.style.top = `${top}px`;
+    playerAvatar.style.setProperty('--scale', scale.toFixed(3));
+
+    const xParallax = (player.x / garden.clientWidth - 0.5) * 10;
+    const yParallax = (player.depth - 0.5) * 8;
+    garden.style.backgroundPosition = `${50 + xParallax}% ${50 + yParallax}%`;
+
+    playerAvatar.classList.toggle('walking', player.moving);
+  }
+
   function buildGardenScene() {
     plotsLayer.innerHTML = '';
     gardenersLayer.innerHTML = '';
@@ -180,8 +223,8 @@
       const widthPct = section - 2;
 
       plotBounds[id] = {
-        left: leftPct / 100 * garden.clientWidth,
-        right: (leftPct + widthPct) / 100 * garden.clientWidth
+        left: (leftPct / 100) * garden.clientWidth,
+        right: ((leftPct + widthPct) / 100) * garden.clientWidth
       };
 
       const plot = document.createElement('div');
@@ -196,12 +239,20 @@
       label.textContent = `${gardenersMeta[id].name} plot`;
       plotsLayer.appendChild(label);
 
-      const gardener = document.createElement('div');
-      gardener.className = 'gardener';
-      gardener.style.left = `${leftPct + widthPct / 2}%`;
-      gardener.innerHTML = `<div class='hat'></div><div class='head'></div><div class='body'></div><div class='tool'></div><div class='tag'>${gardenersMeta[id].name}</div>`;
-      gardenersLayer.appendChild(gardener);
+      if (id !== 'you') {
+        const gardener = document.createElement('div');
+        gardener.className = 'gardener';
+        gardener.style.left = `${leftPct + widthPct / 2}%`;
+        gardener.innerHTML = `<div class='hat'></div><div class='head'></div><div class='body'></div><div class='arm left'></div><div class='arm right'></div><div class='tool'></div><div class='tag'>${gardenersMeta[id].name}</div>`;
+        gardenersLayer.appendChild(gardener);
+      }
     });
+
+    if (!player.x || player.x < 1) {
+      player.x = youPlotCenterX();
+    }
+    keepPlayerInsideOwnPlot();
+    renderPlayer();
   }
 
   function ownerForX(x) {
@@ -211,7 +262,7 @@
   function getRandomXForOwner(ownerId) {
     const bounds = plotBounds[ownerId];
     if (!bounds) return 50;
-    return bounds.left + 30 + Math.random() * Math.max(10, (bounds.right - bounds.left - 60));
+    return bounds.left + 30 + Math.random() * Math.max(10, bounds.right - bounds.left - 60);
   }
 
   function addRoundProgress(amount) {
@@ -230,22 +281,45 @@
     renderHUD();
   }
 
+  function collectCoinForPlayer(coin) {
+    if (!coin || !coin.parentNode) return;
+    const value = parseInt(coin.dataset.value || '1', 10);
+    state.gardeners.you.coins += value;
+    save();
+    renderInventory();
+    renderHUD();
+    coin.remove();
+    setStatus(`Collected ${value} coin${value > 1 ? 's' : ''}.`);
+  }
+
   function createCoin(x, y, value, collectorId = 'you') {
     const coin = document.createElement('div');
     coin.className = 'coin';
+    coin.dataset.owner = collectorId;
+    coin.dataset.value = String(value);
     coin.textContent = '$';
     coin.style.left = `${x}px`;
     coin.style.top = `${y}px`;
 
-    coin.onclick = () => {
-      state.gardeners[collectorId].coins += value;
-      save();
-      renderInventory();
-      renderHUD();
-      coin.remove();
+    if (collectorId !== 'you') {
+      coin.style.opacity = '0.7';
+    }
+
+    coin.onclick = (event) => {
+      event.stopPropagation();
+      collectCoinForPlayer(coin);
     };
 
     coinsLayer.appendChild(coin);
+    if (collectorId !== 'you') {
+      setTimeout(() => {
+        if (!coin.parentNode) return;
+        state.gardeners[collectorId].coins += value;
+        save();
+        renderInventory();
+        coin.remove();
+      }, 2600);
+    }
     setTimeout(() => {
       if (coin.parentNode) coin.remove();
     }, 7000);
@@ -255,7 +329,7 @@
     plantEl.classList.add('mature');
     plantEl.dataset.mature = '1';
     const hint = plantEl.querySelector('.hint');
-    if (hint) hint.textContent = ownerId === 'you' ? 'Click to harvest' : 'Auto harvest by owner';
+    if (hint) hint.textContent = ownerId === 'you' ? 'Harvest' : 'Auto harvest';
 
     const drip = setInterval(() => {
       if (!plantEl.parentNode) {
@@ -302,13 +376,16 @@
     plantEl.style.left = `${x}px`;
     plantEl.dataset.type = seed;
     plantEl.dataset.owner = ownerId;
+    plantEl.dataset.boost = '0';
     plantEl.innerHTML = `<div class='grow'>.</div><div class='label'>${seed}</div><div class='hint'>Growing...</div>`;
     plantsLayer.appendChild(plantEl);
 
     let tick = 0;
     const target = seedTypes[seed].growTime;
     const growth = setInterval(() => {
-      tick += 1;
+      const boost = parseFloat(plantEl.dataset.boost || '0');
+      tick += 1 + boost;
+      plantEl.dataset.boost = String(Math.max(0, boost - 0.2));
       const growEl = plantEl.querySelector('.grow');
       if (!growEl) {
         clearInterval(growth);
@@ -385,7 +462,7 @@
     }
 
     if (!ok) {
-      setStatus('Trade failed. Check seeds/coins for both gardeners.');
+      setStatus('Trade failed. Check seeds and coins for both gardeners.');
     }
   }
 
@@ -394,11 +471,9 @@
     let toId = npcIds[Math.floor(Math.random() * npcIds.length)];
     if (toId === fromId) toId = 'you';
 
-    const seed = Object.keys(seedTypes)[Math.floor(Math.random() * Object.keys(seedTypes).length)];
-    const qty = 1;
-    const price = seedTypes[seed].cost;
-
-    const ok = executeTrade(fromId, toId, seed, qty, price);
+    const seedNames = Object.keys(seedTypes);
+    const seed = seedNames[Math.floor(Math.random() * seedNames.length)];
+    const ok = executeTrade(fromId, toId, seed, 1, seedTypes[seed].cost);
     if (ok) {
       pushLog(`${gardenersMeta[fromId].name} traded ${seed} to ${gardenersMeta[toId].name}`);
     }
@@ -411,35 +486,167 @@
     renderHUD();
   }
 
+  function plantAtPlayer() {
+    if (player.plantedCooldownMs > 0) return;
+
+    const selectedSeed = seedSelect.value;
+    if (selectedSeed === 'none') {
+      setStatus('Choose a seed first.');
+      return;
+    }
+
+    const owner = ownerForX(player.x);
+    if (owner !== 'you') {
+      setStatus('Move back to your private plot to plant.');
+      return;
+    }
+
+    const planted = plantSeed('you', selectedSeed, player.x);
+    if (!planted) {
+      setStatus(`No ${selectedSeed} seeds available.`);
+      return;
+    }
+
+    player.plantedCooldownMs = 280;
+    setStatus(`Planted ${selectedSeed} in your private plot.`);
+  }
+
+  function waterNearestPlant() {
+    const candidates = Array.from(plantsLayer.querySelectorAll('.plant[data-owner="you"]'))
+      .filter((plant) => plant.dataset.mature !== '1');
+    if (!candidates.length) {
+      setStatus('No growing plant nearby to water.');
+      return;
+    }
+
+    let nearest = null;
+    let best = Infinity;
+    candidates.forEach((plant) => {
+      const x = parseFloat(plant.style.left || '0');
+      const d = Math.abs(x - player.x);
+      if (d < best) {
+        best = d;
+        nearest = plant;
+      }
+    });
+
+    if (!nearest || best > 140) {
+      setStatus('Move closer to a growing plant to water it.');
+      return;
+    }
+
+    const nowBoost = parseFloat(nearest.dataset.boost || '0');
+    nearest.dataset.boost = String(Math.min(2.5, nowBoost + 1));
+    nearest.classList.add('watered');
+    setTimeout(() => nearest.classList.remove('watered'), 650);
+
+    const pop = document.createElement('div');
+    pop.className = 'water-pop';
+    pop.textContent = '+water';
+    pop.style.left = nearest.style.left;
+    pop.style.top = '430px';
+    coinsLayer.appendChild(pop);
+    setTimeout(() => pop.remove(), 800);
+
+    const hint = nearest.querySelector('.hint');
+    if (hint) hint.textContent = 'Watered: faster growth';
+    setStatus('Watered plant. Growth speed increased.');
+  }
+
+  function waveToNearestGardener() {
+    if (player.waveCooldownMs > 0) return;
+
+    const npcs = Array.from(gardenersLayer.querySelectorAll('.gardener'));
+    if (!npcs.length) return;
+
+    const playerPct = (player.x / garden.clientWidth) * 100;
+    let nearest = null;
+    let best = Infinity;
+    npcs.forEach((npc) => {
+      const pct = parseFloat(npc.style.left || '0');
+      const d = Math.abs(pct - playerPct);
+      if (d < best) {
+        best = d;
+        nearest = npc;
+      }
+    });
+
+    playerAvatar.classList.add('waving');
+    if (nearest) nearest.classList.add('waving');
+    setTimeout(() => {
+      playerAvatar.classList.remove('waving');
+      if (nearest) nearest.classList.remove('waving');
+    }, 1200);
+
+    player.waveCooldownMs = 500;
+    setStatus('You waved to the nearby gardener.');
+  }
+
   function setupInputs() {
+    window.addEventListener('keydown', (event) => {
+      const key = event.key.toLowerCase();
+      keys[key] = true;
+
+      const active = document.activeElement;
+      const typing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+      if ((key === ' ' || key === 'e') && !typing) {
+        event.preventDefault();
+        plantAtPlayer();
+      }
+      if (key === 'r' && !typing) {
+        event.preventDefault();
+        waterNearestPlant();
+      }
+      if (key === 'f' && !typing) {
+        event.preventDefault();
+        waveToNearestGardener();
+      }
+      if (key.startsWith('arrow')) {
+        event.preventDefault();
+      }
+    });
+
+    window.addEventListener('keyup', (event) => {
+      keys[event.key.toLowerCase()] = false;
+    });
+
     garden.addEventListener('click', (event) => {
       if (event.target.classList.contains('coin')) return;
-
-      const selectedSeed = seedSelect.value;
-      if (selectedSeed === 'none') {
-        setStatus('Choose a seed first.');
-        return;
-      }
-
-      const rect = garden.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const owner = ownerForX(x);
-      if (owner !== 'you') {
-        setStatus('That plot is private. Plant inside your own space.');
-        return;
-      }
-
-      const planted = plantSeed('you', selectedSeed, x);
-      if (!planted) {
-        setStatus(`No ${selectedSeed} seeds available.`);
-        return;
-      }
-
-      setStatus(`Planted ${selectedSeed} in your private plot.`);
+      plantAtPlayer();
     });
 
     buySeedBtn.addEventListener('click', () => userTrade('buy'));
     sellSeedBtn.addEventListener('click', () => userTrade('sell'));
+    waterBtn.addEventListener('click', () => waterNearestPlant());
+    waveBtn.addEventListener('click', () => waveToNearestGardener());
+
+    if (touchControls) {
+      touchControls.querySelectorAll('[data-touch-key]').forEach((btn) => {
+        const key = btn.getAttribute('data-touch-key');
+        const press = (event) => {
+          event.preventDefault();
+          keys[key] = true;
+        };
+        const release = (event) => {
+          event.preventDefault();
+          keys[key] = false;
+        };
+        btn.addEventListener('pointerdown', press);
+        btn.addEventListener('pointerup', release);
+        btn.addEventListener('pointercancel', release);
+        btn.addEventListener('pointerleave', release);
+      });
+
+      touchControls.querySelectorAll('[data-touch-action]').forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+          event.preventDefault();
+          const action = btn.getAttribute('data-touch-action');
+          if (action === 'plant') plantAtPlayer();
+          if (action === 'water') waterNearestPlant();
+          if (action === 'wave') waveToNearestGardener();
+        });
+      });
+    }
 
     shopBtn.addEventListener('click', () => {
       shopModal.style.display = 'flex';
@@ -460,6 +667,56 @@
     });
   }
 
+  function tryCollectNearbyCoins() {
+    const playerY = 128 + player.depth * 370;
+    const coins = coinsLayer.querySelectorAll('.coin');
+    coins.forEach((coin) => {
+      const cx = parseFloat(coin.style.left || '0');
+      const cy = parseFloat(coin.style.top || '0') + 30;
+      const distance = Math.hypot(cx - player.x, cy - playerY);
+      if (distance < 48) {
+        collectCoinForPlayer(coin);
+      }
+    });
+  }
+
+  function updateMovement(now) {
+    if (!updateMovement.last) updateMovement.last = now;
+    const dt = Math.min(0.05, (now - updateMovement.last) / 1000);
+    updateMovement.last = now;
+
+    const active = document.activeElement;
+    const typing = active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA');
+
+    let mx = 0;
+    let md = 0;
+    if (!typing) {
+      if (keys['a'] || keys['arrowleft']) mx -= 1;
+      if (keys['d'] || keys['arrowright']) mx += 1;
+      if (keys['w'] || keys['arrowup']) md -= 1;
+      if (keys['s'] || keys['arrowdown']) md += 1;
+    }
+
+    player.moving = mx !== 0 || md !== 0;
+    if (player.moving) {
+      const len = Math.hypot(mx, md) || 1;
+      player.x += (mx / len) * PLAYER_SPEED_X * dt;
+      player.depth += (md / len) * PLAYER_SPEED_DEPTH * dt;
+      keepPlayerInsideOwnPlot();
+      renderPlayer();
+    }
+
+    if (player.plantedCooldownMs > 0) {
+      player.plantedCooldownMs -= dt * 1000;
+    }
+    if (player.waveCooldownMs > 0) {
+      player.waveCooldownMs -= dt * 1000;
+    }
+
+    tryCollectNearbyCoins();
+    requestAnimationFrame(updateMovement);
+  }
+
   function runLoops() {
     setInterval(() => {
       const elapsed = Math.floor((Date.now() - roundStartMs) / 1000);
@@ -473,7 +730,7 @@
 
     setInterval(() => {
       const x = 20 + Math.random() * (garden.clientWidth - 40);
-      const y = 50 + Math.random() * 280;
+      const y = 90 + Math.random() * 300;
       createCoin(x, y, 1, 'you');
     }, 3500);
 
@@ -484,12 +741,16 @@
   function init() {
     setupSelectors();
     buildGardenScene();
+    player.x = youPlotCenterX();
+    keepPlayerInsideOwnPlot();
+    renderPlayer();
     setupShop();
     renderInventory();
     resetRound();
     setupInputs();
     runLoops();
-    setStatus('Private plots active. Grow, harvest, and trade with all gardeners.');
+    requestAnimationFrame(updateMovement);
+    setStatus('3D mode active. Move with WASD or arrows, then press Space or E to plant.');
   }
 
   init();
