@@ -13,7 +13,9 @@ export const gardenersMeta = {
     luna: { name: "Luna", role: "Herb Specialist" },
     maya: { name: "Maya", role: "Soil Specialist" },
     iris: { name: "Iris", role: "Seed Keeper" },
-    zara: { name: "Zara", role: "Bloom Expert" }
+    zara: { name: "Zara", role: "Bloom Expert" },
+    noor: { name: "Noor", role: "Compost Expert" },
+    rhea: { name: "Rhea", role: "Irrigation Keeper" }
 };
 export const initialState = {
     level: 1,
@@ -23,7 +25,9 @@ export const initialState = {
         luna: { coins: 14, seeds: { rose: 3, tulip: 1, sunflower: 1 } },
         maya: { coins: 16, seeds: { rose: 1, tulip: 3, sunflower: 0 } },
         iris: { coins: 15, seeds: { rose: 2, tulip: 2, sunflower: 2 } },
-        zara: { coins: 18, seeds: { rose: 1, tulip: 2, sunflower: 2 } }
+        zara: { coins: 18, seeds: { rose: 1, tulip: 2, sunflower: 2 } },
+        noor: { coins: 17, seeds: { rose: 2, tulip: 1, sunflower: 1 } },
+        rhea: { coins: 13, seeds: { rose: 1, tulip: 3, sunflower: 1 } }
     }
 };
 //# sourceMappingURL=gameConfig.js.map

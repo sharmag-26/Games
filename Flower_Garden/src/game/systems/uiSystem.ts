@@ -6,7 +6,7 @@ export class UiSystem {
 
   seedSummary(seedMap) {
     return Object.keys(this.game.seedTypes)
-      .map((seed) => `${seed}:${seedMap[seed]}`)
+      .map((seed) => `${seed}:${seedMap?.[seed] || 0}`)
       .join(" ");
   }
 
@@ -48,13 +48,32 @@ export class UiSystem {
       this.game.dom.inventoryEl.appendChild(row);
     });
 
+    const barnTotal = Object.keys(this.game.seedTypes).reduce((sum, seed) => sum + (you.barnSeeds?.[seed] || 0), 0);
+    const barnRow = document.createElement("div");
+    barnRow.style.marginTop = "6px";
+    barnRow.textContent = `Barn storage seeds: ${barnTotal}`;
+    this.game.dom.inventoryEl.appendChild(barnRow);
+
     this.game.dom.communityInventoryEl.innerHTML = "";
     this.game.npcIds.forEach((id) => {
       const card = document.createElement("div");
       card.className = "community-card";
-      card.textContent = `${this.game.gardenersMeta[id].name} | Coins ${this.game.state.gardeners[id].coins} | ${this.seedSummary(this.game.state.gardeners[id].seeds)}`;
+      card.textContent = `${this.game.gardenersMeta[id].name} | Coins ${this.game.state.gardeners[id].coins} | Bag ${this.seedSummary(this.game.state.gardeners[id].seeds)} | Barn ${this.seedSummary(this.game.state.gardeners[id].barnSeeds || {})}`;
       this.game.dom.communityInventoryEl.appendChild(card);
     });
+  }
+
+  renderBarnStorage(ownerId = "you") {
+    if (!this.game.dom.barnSeedListEl) return;
+    const owner = this.game.state.gardeners[ownerId];
+    const storedTotal = Object.keys(this.game.seedTypes).reduce((sum, seed) => sum + (owner.barnSeeds?.[seed] || 0), 0);
+    const bagTotal = Object.keys(this.game.seedTypes).reduce((sum, seed) => sum + (owner.seeds?.[seed] || 0), 0);
+    const rows = Object.keys(this.game.seedTypes).map((seed) => {
+      const value = owner.barnSeeds?.[seed] || 0;
+      return `<div class="row"><span>${this.game.seedTypes[seed].icon} ${seed}</span><strong>${value}</strong></div>`;
+    });
+    const summary = `<div class="summary">Stored Seeds: <strong>${storedTotal}</strong> | Bag Seeds: <strong>${bagTotal}</strong></div>`;
+    this.game.dom.barnSeedListEl.innerHTML = `${summary}${rows.join("")}`;
   }
 
   setupSelectors() {

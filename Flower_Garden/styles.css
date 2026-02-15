@@ -1,4 +1,4 @@
-:root{--bg:#dcefd7;--panel:#ffffff;--text:#173222;--soil:#6a4a2f;--soil2:#8d6642;--line:#2b5338}
+:root{--bg:#dcefd7;--panel:#ffffff;--text:#173222;--soil:#6a4a2f;--soil2:#8d6642;--line:#2b5338;--field-scale:1;--decor-lane:150px}
 *{box-sizing:border-box;font-family:Segoe UI,Arial,Helvetica,sans-serif}
 body{margin:0;background:radial-gradient(circle at 20% 0,#f3fbef,#dcefd7 42%,#c7e1be 100%);color:var(--text)}
 .hud{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:linear-gradient(180deg,#ffffff,#e8f5e3);border-bottom:1px solid #b6ccb0;gap:10px}
@@ -6,44 +6,76 @@ body{margin:0;background:radial-gradient(circle at 20% 0,#f3fbef,#dcefd7 42%,#c7
 .hud .center{text-align:center;line-height:1.25}
 .hud .center strong{display:block;font-size:19px}
 #roundInfo{font-size:13px;opacity:.9}
-.wrap{display:grid;grid-template-columns:1fr 330px;gap:12px;padding:12px}
+.wrap{display:grid;grid-template-columns:1fr 330px;gap:12px;padding:12px;height:calc(100svh - 74px);overflow:hidden;min-height:0}
 
-#gardenArea{position:relative;height:700px;border-radius:14px;overflow:hidden;border:2px solid #aac79f;background:linear-gradient(180deg,#c7e8ff 0,#9fd488 34%,#7bb76d 62%,#5e9654 100%);background-size:120% 120%;perspective:1100px}
-#gardenArea::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 78% 12%,rgba(255,255,255,.35),transparent 33%),repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0,rgba(255,255,255,.04) 1px,transparent 1px,transparent 80px);pointer-events:none}
-#gardenArea::after{content:"";position:absolute;right:46px;top:30px;width:88px;height:88px;border-radius:50%;background:radial-gradient(circle,#fff6b1 0,#ffd465 52%,#f4b93d 76%,rgba(244,185,61,.25) 100%);box-shadow:0 0 26px rgba(255,224,120,.85),0 0 70px rgba(255,203,92,.45);pointer-events:none}
+#gardenArea{position:relative;height:100%;border-radius:14px;overflow:hidden;border:2px solid #aac79f;background:linear-gradient(180deg,#c6e7ff 0,#96cf7d 30%,#6ea65f 58%,#4f7f44 100%);background-size:120% 120%;perspective:1100px}
+#gardenArea::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 76% 13%,rgba(255,255,255,.32),transparent 36%),radial-gradient(circle at 18% 26%,rgba(255,255,255,.16),transparent 22%),repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0,rgba(255,255,255,.03) 1px,transparent 1px,transparent 80px),linear-gradient(180deg,transparent 0,rgba(0,0,0,.07) 100%);pointer-events:none}
+#gardenArea::after{content:"";position:absolute;top:0;right:var(--decor-lane);width:1px;height:100%;background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(0,0,0,.12));pointer-events:none;opacity:.45}
 
-.plotsLayer,.plantsLayer,.gardenersLayer,.coinsLayer{position:absolute;inset:0}
+.plotsLayer,.plantsLayer,.gardenersLayer,.coinsLayer{position:absolute;top:0;left:0;bottom:0;right:var(--decor-lane)}
 
-.barn{position:absolute;right:36px;top:134px;width:170px;height:140px;z-index:1;transform:scale(.95)}
-.barn .roof{position:absolute;left:8px;top:0;width:154px;height:58px;background:linear-gradient(180deg,#b3412a,#832816);clip-path:polygon(50% 0,100% 100%,0 100%);filter:drop-shadow(0 3px 2px rgba(0,0,0,.28))}
-.barn .wall{position:absolute;left:24px;top:44px;width:122px;height:84px;border-radius:3px;background:linear-gradient(180deg,#d5563e,#b53f2b);border:2px solid rgba(0,0,0,.15)}
-.barn .door{position:absolute;left:70px;top:76px;width:30px;height:52px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#6b3e25,#4b2b18);border:1px solid rgba(0,0,0,.25)}
+.decor-sun{position:absolute;right:34px;top:20px;width:68px;height:68px;border-radius:50%;background:radial-gradient(circle,#fff6b1 0,#ffd465 52%,#f4b93d 76%,rgba(244,185,61,.25) 100%);box-shadow:0 0 22px rgba(255,224,120,.8),0 0 54px rgba(255,203,92,.38);z-index:1;pointer-events:none}
+.windmill{position:absolute;right:18px;top:94px;width:94px;height:200px;z-index:1;filter:drop-shadow(0 8px 5px rgba(0,0,0,.2));pointer-events:none}
+.windmill .tower{left:34px;height:138px}
+.windmill .hub{left:38px;top:48px;width:18px;height:18px}
+.windmill .blades{left:47px;top:57px}
+.windmill .tower{position:absolute;left:41px;bottom:0;width:28px;height:152px;background:linear-gradient(180deg,#dbd4c5,#b3ab99);clip-path:polygon(22% 0,78% 0,100% 100%,0 100%);border:1px solid rgba(0,0,0,.15)}
+.windmill .hub{position:absolute;left:45px;top:56px;width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 38% 34%,#f0ece2,#9b9487 72%,#756d63);border:1px solid rgba(0,0,0,.2);z-index:2}
+.windmill .blades{position:absolute;left:55px;top:66px;width:0;height:0;transform-origin:center center;animation:windmill-spin 2.4s linear infinite;z-index:1}
+.windmill .blade{position:absolute;left:-5px;top:-66px;width:10px;height:68px;transform-origin:50% 66px;border-radius:8px;background:linear-gradient(180deg,#f7f5f1,#cbc4b8 74%,#978f81);border:1px solid rgba(0,0,0,.15)}
+.windmill .blade::after{content:"";position:absolute;left:1px;right:1px;top:7px;height:18px;border-radius:5px;background:rgba(255,255,255,.38)}
+.windmill .blade.b2{transform:rotate(90deg)}
+.windmill .blade.b3{transform:rotate(180deg)}
+.windmill .blade.b4{transform:rotate(270deg)}
+@keyframes windmill-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
-.plot{position:absolute;bottom:66px;height:430px;border:1px solid rgba(31,69,44,.45);border-radius:10px;background:linear-gradient(180deg,var(--soil2),var(--soil));transform:rotateX(56deg);transform-origin:bottom;box-shadow:0 18px 20px rgba(0,0,0,.24), inset 0 10px 22px rgba(255,255,255,.13)}
-.plot::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.13) 0,rgba(0,0,0,.13) 2px,transparent 2px,transparent 26px);opacity:.44}
-.plot-label{position:absolute;bottom:38px;transform:translateX(-50%);font-size:12px;font-weight:700;color:#123b26;background:rgba(255,255,255,.82);padding:3px 8px;border-radius:8px;border:1px solid rgba(0,0,0,.08)}
+.plot-barn{position:absolute;bottom:calc(332px * var(--field-scale));width:72px;height:94px;transform:translateX(-50%);z-index:6;cursor:pointer;filter:drop-shadow(0 7px 5px rgba(0,0,0,.28))}
+.plot-barn .roof{position:absolute;left:-8px;top:-18px;width:88px;height:30px;background:linear-gradient(180deg,#b3442c,#7f2a1a);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.plot-barn .wall{position:absolute;left:6px;top:10px;width:60px;height:58px;border-radius:4px;background:linear-gradient(180deg,#de6047,#b84633);border:1px solid rgba(0,0,0,.15)}
+.plot-barn .door{position:absolute;left:27px;top:34px;width:18px;height:34px;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#704329,#4f2d1a);border:1px solid rgba(0,0,0,.18)}
+.plot-barn .sign{position:absolute;left:50%;top:72px;transform:translateX(-50%);font-size:10px;font-weight:700;color:#163625;background:rgba(255,255,255,.9);padding:2px 7px;border-radius:6px;white-space:nowrap}
+.plot-barn.own .wall{background:linear-gradient(180deg,#e16f54,#c04a35)}
+.plot-barn:hover{transform:translateX(-50%) scale(1.04)}
+.plot-barn.busy .door{filter:brightness(1.24)}
+.plot-barn.busy{animation:barn-busy 0.8s ease-in-out infinite alternate}
+@keyframes barn-busy{from{filter:drop-shadow(0 5px 3px rgba(0,0,0,.24))}to{filter:drop-shadow(0 0 9px rgba(255,225,140,.7))}}
 
-.gardener{position:absolute;bottom:16px;transform:translateX(-50%);width:52px;height:108px;filter:drop-shadow(0 8px 6px rgba(0,0,0,.22))}
+.gardener.inside-barn{opacity:0;pointer-events:none}
+
+#gardenArea.inside-barn .plotsLayer,#gardenArea.inside-barn .plantsLayer,#gardenArea.inside-barn .gardenersLayer,#gardenArea.inside-barn .coinsLayer{filter:blur(1.4px) brightness(.72)}
+#gardenArea.inside-barn .windmill{opacity:.5}
+
+.plot{position:absolute;bottom:calc(66px * var(--field-scale));height:calc(430px * var(--field-scale));border:1px solid rgba(31,69,44,.45);border-radius:10px;background:linear-gradient(180deg,#8d6642,#704c2f 42%,#5f3f26 100%);transform:rotateX(56deg);transform-origin:bottom;box-shadow:0 18px 20px rgba(0,0,0,.24), inset 0 14px 28px rgba(255,255,255,.14), inset 0 -10px 18px rgba(0,0,0,.22)}
+.plot::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.15) 0,rgba(0,0,0,.15) 2px,transparent 2px,transparent 24px),radial-gradient(circle at 24% 28%,rgba(255,255,255,.05),transparent 18%),radial-gradient(circle at 70% 62%,rgba(0,0,0,.14),transparent 26%);opacity:.5}
+.plot-label{position:absolute;bottom:calc(38px * var(--field-scale));transform:translateX(-50%);font-size:12px;font-weight:700;color:#123b26;background:rgba(255,255,255,.82);padding:3px 8px;border-radius:8px;border:1px solid rgba(0,0,0,.08)}
+
+.gardener{position:absolute;bottom:16px;transform:translateX(-50%);width:52px;height:108px;filter:drop-shadow(0 8px 6px rgba(0,0,0,.22));animation:npc-breathe 2.8s ease-in-out infinite}
 .gardener .hat{position:absolute;left:10px;top:2px;width:30px;height:12px;background:#cfa86f;border-radius:14px;border:1px solid rgba(0,0,0,.2)}
 .gardener .head{position:absolute;left:16px;top:12px;width:20px;height:20px;border-radius:50%;background:#f3c8a8;border:1px solid rgba(0,0,0,.15)}
+.gardener .head::after{content:"";position:absolute;left:50%;top:58%;width:10px;height:6px;transform:translateX(-50%);border-bottom:2px solid rgba(80,34,24,.7);border-radius:0 0 10px 10px}
 .gardener .body{position:absolute;left:11px;top:30px;width:30px;height:38px;border-radius:9px;background:linear-gradient(180deg,#3e7f4f,#205e32);border:1px solid rgba(0,0,0,.2)}
 .gardener .arm{position:absolute;top:39px;width:7px;height:26px;background:#ddb08f;border-radius:6px}
 .gardener .arm.left{left:6px;transform:rotate(12deg)}
 .gardener .arm.right{right:6px;transform:rotate(-12deg)}
 .gardener .tool{position:absolute;left:2px;top:40px;width:8px;height:42px;background:linear-gradient(180deg,#c49b61,#9c7448);border-radius:4px;transform:rotate(10deg)}
-.gardener .tag{position:absolute;left:50%;top:74px;transform:translateX(-50%);font-size:11px;font-weight:700;background:rgba(255,255,255,.85);padding:2px 6px;border-radius:6px;white-space:nowrap}
+.gardener .tag{position:absolute;left:50%;top:74px;transform:translateX(-50%) scaleX(var(--dir,1));font-size:11px;font-weight:700;background:rgba(255,255,255,.85);padding:2px 6px;border-radius:6px;white-space:nowrap}
 .gardener.waving .arm.left{animation:swing-left .25s infinite alternate}
 .gardener.waving .arm.right{animation:swing-right .25s infinite alternate}
+.gardener.moving .arm.left{animation:swing-left .38s infinite alternate}
+.gardener.moving .arm.right{animation:swing-right .38s infinite alternate}
+.gardener.planting .arm.right{animation:swing-right .16s infinite alternate}
+.gardener.planting .tool{transform:rotate(26deg)}
 
-.player-avatar{position:absolute;left:100px;top:420px;width:62px;height:130px;transform:translate(-50%,-50%) scale(var(--scale,1));transform-origin:center bottom;z-index:4;filter:drop-shadow(0 14px 8px rgba(0,0,0,.25))}
+.player-avatar{position:absolute;left:100px;top:420px;width:62px;height:130px;transform:translate(-50%,-50%) scaleX(var(--face,1)) scaleY(var(--scale,1));transform-origin:center bottom;z-index:4;filter:drop-shadow(0 14px 8px rgba(0,0,0,.25));animation:npc-breathe 3s ease-in-out infinite}
 .player-avatar .hat{position:absolute;left:16px;top:4px;width:30px;height:13px;background:linear-gradient(180deg,#d9b177,#b7894e);border-radius:14px;border:1px solid rgba(0,0,0,.2)}
 .player-avatar .head{position:absolute;left:20px;top:14px;width:22px;height:22px;border-radius:50%;background:linear-gradient(180deg,#f5d2b7,#e7b996);border:1px solid rgba(0,0,0,.16)}
+.player-avatar .head::after{content:"";position:absolute;left:50%;top:58%;width:11px;height:6px;transform:translateX(-50%);border-bottom:2px solid rgba(84,34,24,.72);border-radius:0 0 11px 11px}
 .player-avatar .body{position:absolute;left:15px;top:34px;width:32px;height:45px;border-radius:10px;background:linear-gradient(180deg,#477f51,#215f33);border:1px solid rgba(0,0,0,.24)}
 .player-avatar .arm{position:absolute;top:40px;width:8px;height:28px;background:#e0b293;border-radius:6px}
 .player-avatar .arm.left{left:9px;transform:rotate(8deg)}
 .player-avatar .arm.right{right:9px;transform:rotate(-10deg)}
 .player-avatar .tool{position:absolute;left:3px;top:46px;width:8px;height:44px;background:linear-gradient(180deg,#d1ab73,#8f6a41);border-radius:4px;transform:rotate(9deg)}
-.player-avatar .tag{position:absolute;left:50%;top:84px;transform:translateX(-50%);font-size:11px;font-weight:700;background:rgba(255,255,255,.9);padding:2px 7px;border-radius:7px;white-space:nowrap}
+.player-avatar .tag{position:absolute;left:50%;top:84px;transform:translateX(-50%) scaleX(var(--face,1));font-size:11px;font-weight:700;background:rgba(255,255,255,.9);padding:2px 7px;border-radius:7px;white-space:nowrap}
 .player-avatar .shadow{position:absolute;left:11px;bottom:8px;width:40px;height:12px;background:rgba(0,0,0,.3);border-radius:50%;filter:blur(1px)}
 .player-avatar.walking .arm.left{animation:swing-left .32s infinite alternate}
 .player-avatar.walking .arm.right{animation:swing-right .32s infinite alternate}
@@ -51,29 +83,36 @@ body{margin:0;background:radial-gradient(circle at 20% 0,#f3fbef,#dcefd7 42%,#c7
 .player-avatar.waving .arm.right{animation:swing-right .2s infinite alternate}
 @keyframes swing-left{from{transform:rotate(20deg)}to{transform:rotate(-6deg)}}
 @keyframes swing-right{from{transform:rotate(-22deg)}to{transform:rotate(4deg)}}
+@keyframes npc-breathe{0%,100%{margin-top:0}50%{margin-top:-1px}}
 
-.plantsLayer .plant{position:absolute;bottom:84px;transform:translateX(-50%);text-align:center;cursor:pointer;user-select:none}
+.plantsLayer .plant{position:absolute;transform:translate(-50%,-50%) scale(var(--plant-scale,1)) rotate(var(--tilt,0deg));text-align:center;cursor:pointer;user-select:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.12));animation:plant-sway var(--sway,3.8s) ease-in-out infinite}
 .plant .grow{width:28px;height:28px;margin:0 auto;position:relative}
+.plant .grow::before,.plant .grow::after{content:"";position:absolute;bottom:3px;width:10px;height:6px;background:linear-gradient(180deg,#6fbe52,#2f7f34);border-radius:100% 0 100% 0;opacity:.92}
+.plant .grow::before{left:2px;transform:rotate(-34deg)}
+.plant .grow::after{right:2px;transform:scaleX(-1) rotate(-34deg)}
 .bloom{position:relative;display:block;width:22px;height:22px;margin:0 auto}
 .bloom::before,.bloom::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%}
-.bloom.stage-sprout::before{width:7px;height:12px;background:linear-gradient(180deg,#8ddc70,#3b8f39)}
-.bloom.stage-sprout::after{width:3px;height:16px;background:#2f7a31;top:70%}
-.bloom.stage-bud::before{width:11px;height:11px;background:radial-gradient(circle,#7edc6f,#3a9a3d)}
-.bloom.stage-bud::after{width:3px;height:16px;background:#2f7a31;top:78%}
-.bloom.stage-bloom::after{width:4px;height:18px;background:#2b7a30;top:82%}
-.bloom.bloom-rose.stage-bloom::before{width:18px;height:18px;background:radial-gradient(circle,#ff9da9,#d73758 72%,#9e1d37)}
-.bloom.bloom-tulip.stage-bloom::before{width:16px;height:18px;background:radial-gradient(circle at 50% 35%,#ffd0df,#f46aa4 62%,#b53f73);clip-path:polygon(50% 0,76% 20%,95% 58%,50% 100%,5% 58%,24% 20%)}
-.bloom.bloom-sunflower.stage-bloom::before{width:20px;height:20px;background:radial-gradient(circle,#6d4c29 24%,#f2c542 26%,#e2ab22 62%,#8a631f 100%)}
+.bloom.stage-sprout::before{width:7px;height:12px;background:linear-gradient(180deg,#97e275,#3e8f3b)}
+.bloom.stage-sprout::after{width:3px;height:18px;background:linear-gradient(180deg,#4d9b40,#2f6f2f);top:70%}
+.bloom.stage-bud::before{width:11px;height:11px;background:radial-gradient(circle at 35% 30%,#a8ef90,#4ca84a 72%,#2f6f2f)}
+.bloom.stage-bud::after{width:3px;height:19px;background:linear-gradient(180deg,#4e9f45,#2d6f2c);top:80%}
+.bloom.stage-bloom::after{width:4px;height:20px;background:linear-gradient(180deg,#3d8d3c,#2a6928);top:84%}
+.bloom.bloom-rose.stage-bloom::before{width:18px;height:18px;background:radial-gradient(circle at 38% 32%,#ffd0d8,#e35b78 45%,#b62f4f 76%,#7d1830)}
+.bloom.bloom-rose.stage-bloom{filter:saturate(1.06)}
+.bloom.bloom-tulip.stage-bloom::before{width:16px;height:19px;background:radial-gradient(circle at 45% 30%,#ffe3ec,#f48ab6 54%,#c34f83 82%,#91315d);clip-path:polygon(50% 0,74% 20%,95% 58%,50% 100%,5% 58%,26% 20%)}
+.bloom.bloom-sunflower.stage-bloom::before{width:21px;height:21px;background:radial-gradient(circle,#50351c 20%,#f3c746 24%,#e7b231 58%,#9f7526 100%)}
 .plant .label{font-size:12px;font-weight:600;background:rgba(255,255,255,.82);border-radius:6px;padding:1px 6px;margin-top:2px}
 .plant .hint{font-size:11px;opacity:.85}
+.plant[data-owner]:not([data-owner="you"]) .label,.plant[data-owner]:not([data-owner="you"]) .hint{display:none}
 .plant.mature .hint{color:#195e2d;font-weight:700}
 .plant.watered{filter:drop-shadow(0 0 6px rgba(114,189,255,.8))}
+@keyframes plant-sway{0%,100%{transform:translate(-50%,-50%) scale(var(--plant-scale,1)) rotate(calc(var(--tilt,0deg) - 1.2deg))}50%{transform:translate(-50%,-50%) scale(var(--plant-scale,1)) rotate(calc(var(--tilt,0deg) + 1.2deg))}}
 
 .coinsLayer .coin{position:absolute;font-size:20px;cursor:pointer;user-select:none;filter:drop-shadow(0 2px 1px rgba(0,0,0,.4))}
 .water-pop{position:absolute;font-size:16px;color:#2f76ba;font-weight:700;pointer-events:none;animation:water-rise .8s ease-out forwards}
 @keyframes water-rise{from{transform:translate(-50%,0);opacity:1}to{transform:translate(-50%,-18px);opacity:0}}
 
-.panel{width:330px;background:var(--panel);padding:12px;border-radius:10px;border:1px solid #d8e5d3}
+.panel{width:330px;background:var(--panel);padding:12px;border-radius:10px;border:1px solid #d8e5d3;overflow:auto;max-height:100%;min-height:0}
 button{cursor:pointer;padding:8px 10px;border-radius:7px;border:1px solid #9fb89c;background:#f8fff5}
 button:hover{background:#eaf8e4}
 .home-direct{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:8px 10px;border-radius:7px;border:1px solid #9fb89c;background:#f8fff5;color:inherit;text-decoration:none;font-size:14px}
@@ -88,6 +127,20 @@ h3,h4{margin:8px 0}
 
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center}
 .modal .modal-content{background:#fff;padding:18px;border-radius:10px;width:360px}
+.barn-room{position:relative;overflow:hidden;background:linear-gradient(180deg,#f1e5d3,#dcc2a0 42%,#c59c72 100%);border:2px solid rgba(86,53,28,.35);box-shadow:inset 0 0 0 2px rgba(255,255,255,.2)}
+.barn-room h3{margin-top:0;color:#4f2f18}
+.barn-room-scene{position:absolute;inset:0;pointer-events:none;opacity:.35}
+.barn-room-scene .beam{position:absolute;top:0;width:18px;height:100%;background:linear-gradient(180deg,#8d5e34,#6d4627)}
+.barn-room-scene .beam.left{left:18px}
+.barn-room-scene .beam.right{right:18px}
+.barn-room-scene .shelf{position:absolute;left:52px;right:52px;height:10px;border-radius:6px;background:linear-gradient(180deg,#8a5a31,#664022)}
+.barn-room-scene .shelf.top{top:72px}
+.barn-room-scene .shelf.mid{top:152px}
+.barn-seed-grid{position:relative;z-index:1;display:grid;gap:8px;margin-top:6px;margin-bottom:8px}
+.barn-seed-grid .row{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,.62);border:1px solid rgba(0,0,0,.08);font-weight:600}
+.barn-seed-grid .summary{padding:8px 10px;border-radius:8px;background:rgba(60,100,66,.12);border:1px solid rgba(30,70,36,.25);font-size:13px}
+.barn-actions{display:flex;gap:8px;margin-top:12px;position:relative;z-index:1}
+.barn-help{margin-top:10px;font-size:12px;opacity:.82;position:relative;z-index:1}
 .instructions-content{width:min(760px,92vw);max-height:82vh;overflow:auto}
 .instructions-content h4{margin:10px 0 6px}
 .instructions-content ul{margin:0 0 8px 18px;padding:0}
@@ -97,12 +150,15 @@ h3,h4{margin:8px 0}
 .touch-btn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 
 @media(max-width:980px){
-  .wrap{grid-template-columns:1fr}
+  .wrap{grid-template-columns:1fr;height:auto;overflow:visible}
   .panel{width:100%}
   .hud{flex-direction:column;align-items:flex-start}
   .hud .center{text-align:left}
   #gardenArea{height:62svh;min-height:500px}
-  .barn{right:18px;top:130px;transform:scale(.8)}
+  :root{--decor-lane:120px}
+  .plot-barn{transform:translateX(-50%) scale(.9)}
+  .windmill{right:10px;top:108px;transform:scale(.78)}
+  .decor-sun{right:16px;top:18px;transform:scale(.84)}
 }
 
 @media(max-width:760px){

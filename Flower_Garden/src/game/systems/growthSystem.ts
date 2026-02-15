@@ -76,7 +76,8 @@ export class GrowthSystem {
         clearInterval(drip);
         return;
       }
-      this.createCoin(parseFloat(plantEl.style.left) + (Math.random() * 16 - 8), 430, 1, ownerId);
+      const py = parseFloat(plantEl.style.top || "0");
+      this.createCoin(parseFloat(plantEl.style.left) + (Math.random() * 16 - 8), py + 8, 1, ownerId);
     }, 6000);
 
     if (ownerId !== "you") {
@@ -106,16 +107,23 @@ export class GrowthSystem {
     });
   }
 
-  plantSeed(ownerId, seed, x) {
+  plantSeed(ownerId, seed, x, depth = 0.62) {
     if (this.game.state.gardeners[ownerId].seeds[seed] <= 0) return false;
 
     this.game.state.gardeners[ownerId].seeds[seed] -= 1;
     const plantEl = document.createElement("div");
+    const y = this.game.scene.yForDepth(depth);
+    const scale = Math.max(0.55, Math.min(1.22, 0.6 + depth * 0.45));
     plantEl.className = "plant";
     plantEl.style.left = `${x}px`;
+    plantEl.style.top = `${y}px`;
+    plantEl.style.setProperty("--plant-scale", scale.toFixed(3));
     plantEl.dataset.type = seed;
     plantEl.dataset.owner = ownerId;
     plantEl.dataset.boost = "0";
+    plantEl.dataset.depth = String(depth);
+    plantEl.style.setProperty("--tilt", `${(Math.random() * 8 - 4).toFixed(2)}deg`);
+    plantEl.style.setProperty("--sway", `${(3 + Math.random() * 2.6).toFixed(2)}s`);
     plantEl.innerHTML = `<div class='grow'><span class='bloom ${this.game.seedTypes[seed].bloomClass} stage-sprout'></span></div><div class='label'>${seed}</div><div class='hint'>Growing...</div>`;
     this.game.dom.plantsLayer.appendChild(plantEl);
 
@@ -154,12 +162,35 @@ export class GrowthSystem {
 
   npcGrowCycle() {
     this.game.npcIds.forEach((ownerId) => {
-      const options = Object.keys(this.game.seedTypes).filter(
-        (seed) => this.game.state.gardeners[ownerId].seeds[seed] > 0
-      );
+      if (this.game.scene.npcHasPendingTarget(ownerId)) return;
+
+      const seedBag = this.game.state.gardeners[ownerId].seeds;
+      const totalSeeds = Object.values(seedBag).reduce((sum, count) => sum + count, 0);
+      if (totalSeeds === 0) {
+        const seedNames = Object.keys(this.game.seedTypes);
+        const refillSeed = seedNames[Math.floor(Math.random() * seedNames.length)];
+        seedBag[refillSeed] += 2;
+      }
+
+      const options = Object.keys(this.game.seedTypes).filter((seed) => seedBag[seed] > 0);
       if (!options.length) return;
       const seed = options[Math.floor(Math.random() * options.length)];
-      this.plantSeed(ownerId, seed, this.game.scene.getRandomXForOwner(ownerId));
+      const motion = this.game.scene.getNpcMotion(ownerId);
+      let depth = 0.04 + Math.random() * 0.94;
+      let plantX = this.game.scene.getRandomXForOwner(ownerId);
+      if (motion) {
+        for (let i = 0; i < 6; i += 1) {
+          const candidateDepth = 0.04 + Math.random() * 0.94;
+          const candidateX = this.game.scene.getRandomXForOwner(ownerId);
+          const distanceScore = Math.abs(candidateX - motion.x) + Math.abs(candidateDepth - motion.depth) * 180;
+          if (distanceScore > 85) {
+            depth = candidateDepth;
+            plantX = candidateX;
+            break;
+          }
+        }
+      }
+      this.game.scene.queueNpcMoveTo(ownerId, plantX, depth, { ownerId, seed, x: plantX, depth });
     });
   }
 
@@ -177,7 +208,9 @@ export class GrowthSystem {
     let best = Infinity;
     candidates.forEach((plant) => {
       const x = parseFloat(plant.style.left || "0");
-      const distance = Math.abs(x - this.game.player.x);
+      const py = parseFloat(plant.style.top || "0");
+      const gy = this.game.scene.yForDepth(this.game.player.depth);
+      const distance = Math.hypot(x - this.game.player.x, py - gy);
       if (distance < best) {
         best = distance;
         nearest = plant;
@@ -198,7 +231,7 @@ export class GrowthSystem {
     pop.className = "water-pop";
     pop.textContent = "+water";
     pop.style.left = nearest.style.left;
-    pop.style.top = "430px";
+    pop.style.top = nearest.style.top;
     this.game.dom.coinsLayer.appendChild(pop);
     setTimeout(() => pop.remove(), 800);
 
@@ -207,7 +240,7 @@ export class GrowthSystem {
     this.game.ui.setStatus("Watered plant. Growth speed increased.");
   }
 
-  plantAtPlayer() {
+  plantAtPoint(x, depth) {
     if (this.game.player.plantedCooldownMs > 0) return;
 
     const selectedSeed = this.game.dom.seedSelect.value;
@@ -216,13 +249,13 @@ export class GrowthSystem {
       return;
     }
 
-    const owner = this.game.scene.ownerForX(this.game.player.x);
+    const owner = this.game.scene.ownerForX(x);
     if (owner !== "you") {
       this.game.ui.setStatus("Move back to your private plot to plant.");
       return;
     }
 
-    const planted = this.plantSeed("you", selectedSeed, this.game.player.x);
+    const planted = this.plantSeed("you", selectedSeed, x, depth);
     if (!planted) {
       this.game.ui.setStatus(`No ${selectedSeed} seeds available.`);
       return;
@@ -232,8 +265,12 @@ export class GrowthSystem {
     this.game.ui.setStatus(`Planted ${selectedSeed} in your private plot.`);
   }
 
+  plantAtPlayer() {
+    this.plantAtPoint(this.game.player.x, this.game.player.depth);
+  }
+
   tryCollectNearbyCoins() {
-    const playerY = 128 + this.game.player.depth * 370;
+    const playerY = this.game.scene.yForDepth(this.game.player.depth);
     const coins = this.game.dom.coinsLayer.querySelectorAll(".coin");
     coins.forEach((coin) => {
       const cx = parseFloat(coin.style.left || "0");

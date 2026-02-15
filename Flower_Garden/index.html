@@ -26,10 +26,16 @@
 
   <main class="wrap">
     <section id="gardenArea">
-      <div id="barn" class="barn" aria-hidden="true">
-        <div class="roof"></div>
-        <div class="wall"></div>
-        <div class="door"></div>
+      <div class="decor-sun" aria-hidden="true"></div>
+      <div id="windmill" class="windmill" aria-hidden="true">
+        <div class="tower"></div>
+        <div class="hub"></div>
+        <div class="blades">
+          <span class="blade b1"></span>
+          <span class="blade b2"></span>
+          <span class="blade b3"></span>
+          <span class="blade b4"></span>
+        </div>
       </div>
       <div id="plotsLayer" class="plotsLayer"></div>
       <div id="plantsLayer" class="plantsLayer"></div>
@@ -71,6 +77,7 @@
       <div class="trade-buttons">
         <button id="waterBtn">Water (R)</button>
         <button id="waveBtn">Wave (F)</button>
+        <button id="barnBtn">Barn (B)</button>
       </div>
 
       <h4>Community Gardeners</h4>
@@ -95,6 +102,7 @@
       <button class="touch-btn action" data-touch-action="plant">Plant</button>
       <button class="touch-btn action" data-touch-action="water">Water</button>
       <button class="touch-btn action" data-touch-action="wave">Wave</button>
+      <button class="touch-btn action" data-touch-action="barn">Barn</button>
       <button class="touch-btn action" data-touch-action="help">Help</button>
       <button class="touch-btn action" data-touch-action="home">Home</button>
     </div>
@@ -182,6 +190,24 @@
       <h3>Shop - Buy Seeds</h3>
       <div class="shopItems"></div>
       <button id="closeShop">Close</button>
+    </div>
+  </div>
+
+  <div id="barnModal" class="modal">
+    <div class="modal-content barn-room">
+      <h3>Your Barn Storage</h3>
+      <div class="barn-room-scene" aria-hidden="true">
+        <div class="beam left"></div>
+        <div class="beam right"></div>
+        <div class="shelf top"></div>
+        <div class="shelf mid"></div>
+      </div>
+      <div id="barnSeedList" class="barn-seed-grid"></div>
+      <div class="barn-actions">
+        <button id="collectBarnBtn">Collect All Seeds</button>
+        <button id="closeBarn">Exit Barn</button>
+      </div>
+      <p class="barn-help">Move near your barn and press B to enter.</p>
     </div>
   </div>
 
