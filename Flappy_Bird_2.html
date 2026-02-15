@@ -23,6 +23,7 @@ canvas{display:block;}
   padding:12px;border-radius:14px;
   color:white;
 }
+#shop{z-index:90}
 #shop.disabled{opacity:.4;pointer-events:none;}
 button{margin:4px;padding:6px 10px;cursor:pointer;}
 </style>
@@ -30,6 +31,14 @@ button{margin:4px;padding:6px 10px;cursor:pointer;}
   /* Instructions UI (added) */
   #rulesBtn{position:fixed;top:10px;right:12px;z-index:40;padding:8px 12px;border-radius:8px;border:none;background:#38bdf8;color:#fff;font-family:monospace;font-weight:700;cursor:pointer}
   #rulesBox{position:fixed;top:52px;right:12px;width:320px;background:rgba(0,0,0,0.85);color:#fff;padding:12px;border-radius:10px;display:none;font-family:monospace;font-size:14px;z-index:40}
+</style>
+<style>
+  /* Start overlay */
+  /* make overlay visually covering but not block clicks so shop remains usable */
+  #startOverlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);z-index:60;pointer-events:none}
+  #startBox{background:linear-gradient(#ffffff,#e6f7ff);padding:22px;border-radius:12px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.3);pointer-events:auto}
+  #startBox h1{margin:0 0 12px;font-family:Arial;color:#0b5f9b}
+  #startBox button{font-size:18px;padding:10px 18px;margin:6px;border-radius:8px;border:none;cursor:pointer}
 </style>
   <meta name="viewport" content="width=device-width,initial-scale=1">
 </head>
@@ -51,6 +60,15 @@ button{margin:4px;padding:6px 10px;cursor:pointer;}
 
 <canvas id="game"></canvas>
 
+<!-- Start overlay shown on load -->
+<div id="startOverlay">
+  <div id="startBox">
+    <h1>Sky Bird Adventure</h1>
+    <button id="playBtn">▶ PLAY</button>
+    <button id="openShopBtn">🛒 SHOP</button>
+  </div>
+</div>
+
 <script>
 /* CANVAS */
 const canvas = document.getElementById("game");
@@ -62,6 +80,7 @@ canvas.height = innerHeight;
 let lives = 3, coins = 0;
 let speedBoost = false, invincible = false;
 let gameOver = false;
+let started = false; // whether player pressed Play
 let damageCooldown = false;
 
 /* SCORES */
@@ -78,27 +97,29 @@ let windmills = [], coinsArr = [], enemies = [];
 /* INPUT */
 addEventListener("keydown", e=>{
   if(!gameOver && (e.code==="Space"||e.code==="ArrowUp")){
+    // allow flapping even before starting so the bird animates
     bird.vy = -8;
+    if(!started) startGame();
   }
 });
 
 /* SPAWNERS */
-setInterval(()=>!gameOver && windmills.push({
+setInterval(()=>{ if(!gameOver && started) windmills.push({
   x:canvas.width+100,
   y:Math.random()*(canvas.height-200)+100,
   a:0
-}),2000);
+}); },2000);
 
-setInterval(()=>!gameOver && coinsArr.push({
+setInterval(()=>{ if(!gameOver && started) coinsArr.push({
   x:canvas.width+100,
   y:Math.random()*(canvas.height-100)+50
-}),1200);
+}); },1200);
 
-setInterval(()=>!gameOver && enemies.push({
+setInterval(()=>{ if(!gameOver && started) enemies.push({
   x:canvas.width+100,
   y:Math.random()*(canvas.height-100)+50,
   vy:Math.random()*2-1
-}),2600);
+}); },2600);
 
 /* VOICE */
 function speakGameOver(){
@@ -211,7 +232,7 @@ function hit(){
 
   if(lives<=0){
     gameOver=true;
-    document.getElementById("shop").classList.add("disabled");
+    // keep shop available at all times; do not disable it on game over
 
     lastCoins = coins;
     localStorage.setItem("skyBirdLastCoins", lastCoins);
@@ -232,6 +253,15 @@ function loop(){
 
   if(gameOver){
     drawGameOver();
+    return;
+  }
+
+  // If the game hasn't started, show idle bird and skip obstacle logic
+  if(!started){
+    bird.y = canvas.height/2 + Math.sin(Date.now()/300)*8;
+    bird.vy = 0;
+    drawBird();
+    requestAnimationFrame(loop);
     return;
   }
 
@@ -275,15 +305,42 @@ function loop(){
 }
 
 /* SHOP */
-function buyLife(){if(coins>=10&&!gameOver){coins-=10;lives++;updateUI();}}
-function buySpeed(){if(coins>=15&&!gameOver){coins-=15;speedBoost=true;setTimeout(()=>speedBoost=false,5000);updateUI();}}
-function buyShield(){if(coins>=20&&!gameOver){coins-=20;invincible=true;setTimeout(()=>invincible=false,5000);updateUI();}}
+function buyLife(){if(coins>=10){coins-=10;lives++;updateUI();}}
+function buySpeed(){if(coins>=15){coins-=15;speedBoost=true;setTimeout(()=>speedBoost=false,5000);updateUI();}}
+function buyShield(){if(coins>=20){coins-=20;invincible=true;setTimeout(()=>invincible=false,5000);updateUI();}}
 function updateUI(){
   document.getElementById("coins").textContent = coins;
   document.getElementById("lives").textContent = lives;
 }
 
-/* START */
+/* START / UI hooks */
+function showStartOverlay(){
+  const o = document.getElementById('startOverlay'); if(o) o.style.display = 'flex';
+}
+function hideStartOverlay(){
+  const o = document.getElementById('startOverlay'); if(o) o.style.display = 'none';
+}
+function startGame(){
+  // if we're coming from game over, reset state
+  if(gameOver){
+    gameOver = false;
+    lives = 3; coins = 0; windmills = []; enemies = []; coinsArr = []; bird.x = 150; bird.y = canvas.height/2; bird.vy = 0;
+    updateUI();
+  }
+  started = true;
+  hideStartOverlay();
+}
+
+// buttons
+const playBtn = document.getElementById('playBtn');
+if(playBtn) playBtn.onclick = startGame;
+const openShopBtn = document.getElementById('openShopBtn');
+if(openShopBtn) openShopBtn.onclick = ()=>{ const s=document.getElementById('shop'); if(s) s.style.display = s.style.display==='block' ? 'none' : 'block'; };
+
+// show overlay initially
+showStartOverlay();
+
+// begin loop
 loop();
 </script>
 <button id="rulesBtn">📜 INSTRUCTIONS</button>

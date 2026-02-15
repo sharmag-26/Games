@@ -17,6 +17,15 @@ Windows (double-click):
 
 - Run `serve.bat` (requires Python on PATH)
 
+- Run `serve.bat` (requires Python on PATH). It will open your browser automatically.
+
+Quick start (PowerShell):
+
+```powershell
+.
+serve.bat
+```
+
 Notes:
 - The site files are static HTML/CSS/JS and are playable in modern browsers on desktop, mobile and tablet.
 - Touch controls are enabled via `global-touch.js` for touch devices.
