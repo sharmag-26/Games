@@ -102,36 +102,46 @@ function generateLevel(n){
   const platforms=[], spikes=[], coins=[], enemies=[];
   let x=0;
   const ground=420;
-  const length=1500+n*200;
+  // Make levels longer and scale difficulty with level number
+  const length = 2000 + n * 600; // base length larger and scales faster
 
-  while(x<length){
-    const w=250;
-    const y=ground-Math.random()*120;
-    platforms.push({x,y,w,h:20});
+  while(x < length){
+    // platform width varies to create tighter jumps on higher levels
+    const w = 180 + Math.random() * 180; // 180..360
+    // increase vertical variation as level increases
+    const y = ground - Math.random() * (80 + Math.min(220, n * 12));
+    platforms.push({x, y, w, h: 20});
 
-    if(x>500 && Math.random()<0.35){
-      const spikeWidth=60;
+    // spikes become more common as levels progress
+    const spikeProb = 0.35 + Math.min(0.35, n * 0.03);
+    if(x > 400 && Math.random() < spikeProb){
+      const spikeWidth = 60;
       spikes.push({
-        x:x+Math.random()*(w-spikeWidth),
-        y:y-20,
-        w:spikeWidth,
-        h:20,
-        left:x,
-        right:x+w-spikeWidth,
-        dir:Math.random()<0.5?1:-1
+        x: x + Math.random() * Math.max(0, w - spikeWidth),
+        y: y - 20,
+        w: spikeWidth,
+        h: 20,
+        left: x,
+        right: x + w - spikeWidth,
+        dir: Math.random() < 0.5 ? 1 : -1
       });
     }
 
-    coins.push({x:x+w/2,y:y-60,collected:false});
+    // coins still appear but slightly less dense on later levels
+    const coinProb = Math.max(0.5, 1 - n * 0.03);
+    if(Math.random() < coinProb) coins.push({x: x + w / 2, y: y - 60, collected: false});
 
-    if(Math.random()<0.3){
+    // enemies appear more often on higher levels
+    const enemyProb = Math.min(0.6, 0.25 + n * 0.03);
+    if(Math.random() < enemyProb){
       enemies.push({
-        x:x+w/2,y:y-70,w:40,h:70,
-        shootTimer:100
+        x: x + w / 2, y: y - 70, w: 40, h: 70,
+        shootTimer: 100
       });
     }
 
-    x+=w+150;
+    // increase gap with level slightly to force longer jumps/skill
+    x += w + (120 + Math.min(140, n * 8));
   }
 
   return {
@@ -139,7 +149,7 @@ function generateLevel(n){
     spikes,
     coins,
     enemies,
-    trophy:{x:x+100,y:260,w:30,h:40}
+    trophy: {x: x + 140, y: 260, w: 30, h: 40}
   };
 }
 
@@ -156,8 +166,9 @@ function damagePlayer(){
 function update(){
 if(gameOver||levelComplete)return;
 
-const spikeSpeed=2+levelNumber*0.3;
-const fireRate=Math.max(40,120-levelNumber*5);
+// scale moving spike speed and enemy fire rate with level
+const spikeSpeed = 2 + levelNumber * 0.6;
+const fireRate = Math.max(25, 120 - levelNumber * 8);
 
 // Movement
 player.vx=0;
@@ -241,13 +252,17 @@ if(keys["shift"] && player.shieldEnergy>0){
 
 // Shooters
 level.enemies.forEach(e=>{
-  if(player.x<e.x)e.x-=1;
-  if(player.x>e.x)e.x+=1;
+  // enemies track the player slightly faster on higher levels
+  const trackSpeed = 1 + Math.min(3, levelNumber * 0.2);
+  if(player.x < e.x) e.x -= trackSpeed;
+  if(player.x > e.x) e.x += trackSpeed;
 
   e.shootTimer--;
-  if(e.shootTimer<=0){
-    bullets.push({x:e.x,y:e.y+30,vx:(player.x<e.x?-6:6)});
-    e.shootTimer=fireRate;
+  if(e.shootTimer <= 0){
+    // enemy bullets gain speed with level
+    const bvx = (player.x < e.x ? -6 : 6) * (1 + levelNumber * 0.05);
+    bullets.push({x: e.x, y: e.y + 30, vx: bvx});
+    e.shootTimer = fireRate;
   }
 });
 
