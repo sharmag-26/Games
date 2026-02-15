@@ -8,13 +8,18 @@ body{margin:0;background:radial-gradient(circle at 20% 0,#f3fbef,#dcefd7 42%,#c7
 #roundInfo{font-size:13px;opacity:.9}
 .wrap{display:grid;grid-template-columns:1fr 330px;gap:12px;padding:12px}
 
-#gardenArea{position:relative;height:640px;border-radius:14px;overflow:hidden;border:2px solid #aac79f;background:linear-gradient(180deg,#c7e8ff 0,#9fd488 34%,#7bb76d 62%,#5e9654 100%);background-size:120% 120%;perspective:1100px}
+#gardenArea{position:relative;height:700px;border-radius:14px;overflow:hidden;border:2px solid #aac79f;background:linear-gradient(180deg,#c7e8ff 0,#9fd488 34%,#7bb76d 62%,#5e9654 100%);background-size:120% 120%;perspective:1100px}
 #gardenArea::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 78% 12%,rgba(255,255,255,.35),transparent 33%),repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0,rgba(255,255,255,.04) 1px,transparent 1px,transparent 80px);pointer-events:none}
 #gardenArea::after{content:"";position:absolute;right:46px;top:30px;width:88px;height:88px;border-radius:50%;background:radial-gradient(circle,#fff6b1 0,#ffd465 52%,#f4b93d 76%,rgba(244,185,61,.25) 100%);box-shadow:0 0 26px rgba(255,224,120,.85),0 0 70px rgba(255,203,92,.45);pointer-events:none}
 
 .plotsLayer,.plantsLayer,.gardenersLayer,.coinsLayer{position:absolute;inset:0}
 
-.plot{position:absolute;bottom:70px;height:350px;border:1px solid rgba(31,69,44,.45);border-radius:10px;background:linear-gradient(180deg,var(--soil2),var(--soil));transform:rotateX(56deg);transform-origin:bottom;box-shadow:0 18px 20px rgba(0,0,0,.24), inset 0 10px 22px rgba(255,255,255,.13)}
+.barn{position:absolute;right:36px;top:134px;width:170px;height:140px;z-index:1;transform:scale(.95)}
+.barn .roof{position:absolute;left:8px;top:0;width:154px;height:58px;background:linear-gradient(180deg,#b3412a,#832816);clip-path:polygon(50% 0,100% 100%,0 100%);filter:drop-shadow(0 3px 2px rgba(0,0,0,.28))}
+.barn .wall{position:absolute;left:24px;top:44px;width:122px;height:84px;border-radius:3px;background:linear-gradient(180deg,#d5563e,#b53f2b);border:2px solid rgba(0,0,0,.15)}
+.barn .door{position:absolute;left:70px;top:76px;width:30px;height:52px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#6b3e25,#4b2b18);border:1px solid rgba(0,0,0,.25)}
+
+.plot{position:absolute;bottom:66px;height:430px;border:1px solid rgba(31,69,44,.45);border-radius:10px;background:linear-gradient(180deg,var(--soil2),var(--soil));transform:rotateX(56deg);transform-origin:bottom;box-shadow:0 18px 20px rgba(0,0,0,.24), inset 0 10px 22px rgba(255,255,255,.13)}
 .plot::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.13) 0,rgba(0,0,0,.13) 2px,transparent 2px,transparent 26px);opacity:.44}
 .plot-label{position:absolute;bottom:38px;transform:translateX(-50%);font-size:12px;font-weight:700;color:#123b26;background:rgba(255,255,255,.82);padding:3px 8px;border-radius:8px;border:1px solid rgba(0,0,0,.08)}
 
@@ -48,7 +53,17 @@ body{margin:0;background:radial-gradient(circle at 20% 0,#f3fbef,#dcefd7 42%,#c7
 @keyframes swing-right{from{transform:rotate(-22deg)}to{transform:rotate(4deg)}}
 
 .plantsLayer .plant{position:absolute;bottom:84px;transform:translateX(-50%);text-align:center;cursor:pointer;user-select:none}
-.plant .grow{font-size:24px;line-height:1}
+.plant .grow{width:28px;height:28px;margin:0 auto;position:relative}
+.bloom{position:relative;display:block;width:22px;height:22px;margin:0 auto}
+.bloom::before,.bloom::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%}
+.bloom.stage-sprout::before{width:7px;height:12px;background:linear-gradient(180deg,#8ddc70,#3b8f39)}
+.bloom.stage-sprout::after{width:3px;height:16px;background:#2f7a31;top:70%}
+.bloom.stage-bud::before{width:11px;height:11px;background:radial-gradient(circle,#7edc6f,#3a9a3d)}
+.bloom.stage-bud::after{width:3px;height:16px;background:#2f7a31;top:78%}
+.bloom.stage-bloom::after{width:4px;height:18px;background:#2b7a30;top:82%}
+.bloom.bloom-rose.stage-bloom::before{width:18px;height:18px;background:radial-gradient(circle,#ff9da9,#d73758 72%,#9e1d37)}
+.bloom.bloom-tulip.stage-bloom::before{width:16px;height:18px;background:radial-gradient(circle at 50% 35%,#ffd0df,#f46aa4 62%,#b53f73);clip-path:polygon(50% 0,76% 20%,95% 58%,50% 100%,5% 58%,24% 20%)}
+.bloom.bloom-sunflower.stage-bloom::before{width:20px;height:20px;background:radial-gradient(circle,#6d4c29 24%,#f2c542 26%,#e2ab22 62%,#8a631f 100%)}
 .plant .label{font-size:12px;font-weight:600;background:rgba(255,255,255,.82);border-radius:6px;padding:1px 6px;margin-top:2px}
 .plant .hint{font-size:11px;opacity:.85}
 .plant.mature .hint{color:#195e2d;font-weight:700}
@@ -61,6 +76,8 @@ body{margin:0;background:radial-gradient(circle at 20% 0,#f3fbef,#dcefd7 42%,#c7
 .panel{width:330px;background:var(--panel);padding:12px;border-radius:10px;border:1px solid #d8e5d3}
 button{cursor:pointer;padding:8px 10px;border-radius:7px;border:1px solid #9fb89c;background:#f8fff5}
 button:hover{background:#eaf8e4}
+.home-direct{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:8px 10px;border-radius:7px;border:1px solid #9fb89c;background:#f8fff5;color:inherit;text-decoration:none;font-size:14px}
+.home-direct:hover{background:#eaf8e4}
 select,input{width:100%;padding:7px 8px;border-radius:6px;border:1px solid #b8ccb5;background:#fff}
 h3,h4{margin:8px 0}
 .meta{margin-top:10px;font-size:14px}
@@ -71,6 +88,10 @@ h3,h4{margin:8px 0}
 
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center}
 .modal .modal-content{background:#fff;padding:18px;border-radius:10px;width:360px}
+.instructions-content{width:min(760px,92vw);max-height:82vh;overflow:auto}
+.instructions-content h4{margin:10px 0 6px}
+.instructions-content ul{margin:0 0 8px 18px;padding:0}
+.instructions-content li{margin:3px 0}
 
 .touch-controls{display:none}
 .touch-btn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
@@ -80,7 +101,8 @@ h3,h4{margin:8px 0}
   .panel{width:100%}
   .hud{flex-direction:column;align-items:flex-start}
   .hud .center{text-align:left}
-  #gardenArea{height:56svh;min-height:420px}
+  #gardenArea{height:62svh;min-height:500px}
+  .barn{right:18px;top:130px;transform:scale(.8)}
 }
 
 @media(max-width:760px){

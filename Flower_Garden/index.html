@@ -17,6 +17,8 @@
       <div id="roundInfo">Level 1 | Goal 0/0 | Time 0s</div>
     </div>
     <div class="right">
+      <a id="homeBtn" class="home-direct" href="../Home.html">Home</a>
+      <button id="instructionsBtn">How To Play</button>
       <button id="shopBtn">Shop</button>
       <button id="resetBtn">Reset</button>
     </div>
@@ -24,6 +26,11 @@
 
   <main class="wrap">
     <section id="gardenArea">
+      <div id="barn" class="barn" aria-hidden="true">
+        <div class="roof"></div>
+        <div class="wall"></div>
+        <div class="door"></div>
+      </div>
       <div id="plotsLayer" class="plotsLayer"></div>
       <div id="plantsLayer" class="plantsLayer"></div>
       <div id="gardenersLayer" class="gardenersLayer"></div>
@@ -88,6 +95,85 @@
       <button class="touch-btn action" data-touch-action="plant">Plant</button>
       <button class="touch-btn action" data-touch-action="water">Water</button>
       <button class="touch-btn action" data-touch-action="wave">Wave</button>
+      <button class="touch-btn action" data-touch-action="help">Help</button>
+      <button class="touch-btn action" data-touch-action="home">Home</button>
+    </div>
+  </div>
+
+  <div id="instructionsModal" class="modal">
+    <div class="modal-content instructions-content">
+      <h3>Flower Garden - Full Instructions</h3>
+      <h4>Goal</h4>
+      <ul>
+        <li>Earn coins by planting, watering, harvesting, and collecting coins.</li>
+        <li>Reach the round objective before time runs out.</li>
+        <li>Level up to increase challenge and rewards.</li>
+      </ul>
+
+      <h4>Movement</h4>
+      <ul>
+        <li>Desktop: Move with W/A/S/D or Arrow keys.</li>
+        <li>Mobile/Tablet: Use the on-screen D-pad.</li>
+        <li>You can only move inside your own private plot area.</li>
+      </ul>
+
+      <h4>Planting and Growing</h4>
+      <ul>
+        <li>Select a seed from the Plant Seed dropdown.</li>
+        <li>Plant with Space/E, click/tap in the garden, or use Plant touch button.</li>
+        <li>Plants grow over time from seed to mature flower.</li>
+        <li>Click mature flowers to harvest reward coins.</li>
+      </ul>
+
+      <h4>Watering</h4>
+      <ul>
+        <li>Use R key, Water button, or Water touch button.</li>
+        <li>Water affects the nearest growing plant in your plot.</li>
+        <li>Watered plants grow faster.</li>
+      </ul>
+
+      <h4>Coins</h4>
+      <ul>
+        <li>Coins spawn in the garden and from plants.</li>
+        <li>Collect by moving near coins or clicking/tapping them.</li>
+        <li>Coins are used to buy seeds and trade.</li>
+      </ul>
+
+      <h4>Trading and Shop</h4>
+      <ul>
+        <li>Open Shop to buy seeds directly with coins.</li>
+        <li>Use Trade controls to buy/sell seeds with other gardeners.</li>
+        <li>Select partner, seed type, and quantity, then choose Buy or Sell.</li>
+      </ul>
+
+      <h4>Community Gardeners</h4>
+      <ul>
+        <li>Each gardener has a private plot and their own resources.</li>
+        <li>NPC gardeners automatically plant, harvest, and trade.</li>
+        <li>Use F key, Wave button, or Wave touch button to wave.</li>
+      </ul>
+
+      <h4>Rounds, Levels, and Timer</h4>
+      <ul>
+        <li>HUD shows current level, objective progress, and remaining time.</li>
+        <li>Meeting objective increases level and bonus rewards.</li>
+        <li>If time runs out, level drops and the round resets.</li>
+      </ul>
+
+      <h4>Mobile and Touch</h4>
+      <ul>
+        <li>Use bottom controls: D-pad + Plant/Water/Wave/Help/Home.</li>
+        <li>All actions are available without keyboard.</li>
+      </ul>
+
+      <h4>Save, Reset, and Exit</h4>
+      <ul>
+        <li>Progress saves automatically in browser local storage.</li>
+        <li>Reset clears saved game and restarts from beginning.</li>
+        <li>Use Home to return directly to Game Hub.</li>
+      </ul>
+
+      <button id="closeInstructions">Close</button>
     </div>
   </div>
 
@@ -99,6 +185,6 @@
     </div>
   </div>
 
-  <script src="game.js"></script>
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>

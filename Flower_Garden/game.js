@@ -9,6 +9,9 @@
   const shopModal = document.getElementById('shopModal');
   const closeShop = document.getElementById('closeShop');
   const shopItemsEl = document.querySelector('.shopItems');
+  const instructionsBtn = document.getElementById('instructionsBtn');
+  const instructionsModal = document.getElementById('instructionsModal');
+  const closeInstructions = document.getElementById('closeInstructions');
 
   const seedSelect = document.getElementById('seedSelect');
   const inventoryEl = document.getElementById('inventory');
@@ -36,9 +39,9 @@
   const PLAYER_SPEED_DEPTH = 0.95;
 
   const seedTypes = {
-    rose: { icon: 'R', cost: 5, growTime: 8, payout: 7 },
-    tulip: { icon: 'T', cost: 4, growTime: 6, payout: 5 },
-    sunflower: { icon: 'S', cost: 8, growTime: 10, payout: 10 }
+    rose: { icon: 'R', bloomClass: 'bloom-rose', cost: 5, growTime: 8, payout: 7 },
+    tulip: { icon: 'T', bloomClass: 'bloom-tulip', cost: 4, growTime: 6, payout: 5 },
+    sunflower: { icon: 'S', bloomClass: 'bloom-sunflower', cost: 8, growTime: 10, payout: 10 }
   };
 
   const gardenersMeta = {
@@ -218,9 +221,15 @@
     gardenersLayer.innerHTML = '';
 
     const section = 100 / gardenerIds.length;
+    const centers = [];
+    for (let i = 0; i < gardenerIds.length; i += 1) {
+      centers.push((i + 0.5) * section);
+    }
+
     gardenerIds.forEach((id, index) => {
-      const leftPct = index * section + 1;
-      const widthPct = section - 2;
+      const widthPct = Math.max(14, section - 0.6);
+      const centerPct = centers[index];
+      const leftPct = centerPct - widthPct / 2;
 
       plotBounds[id] = {
         left: (leftPct / 100) * garden.clientWidth,
@@ -235,14 +244,15 @@
 
       const label = document.createElement('div');
       label.className = 'plot-label';
-      label.style.left = `${leftPct + widthPct / 2}%`;
+      label.style.left = `${centerPct}%`;
       label.textContent = `${gardenersMeta[id].name} plot`;
       plotsLayer.appendChild(label);
 
       if (id !== 'you') {
         const gardener = document.createElement('div');
         gardener.className = 'gardener';
-        gardener.style.left = `${leftPct + widthPct / 2}%`;
+        gardener.style.left = `${centerPct}%`;
+        gardener.style.zIndex = '8';
         gardener.innerHTML = `<div class='hat'></div><div class='head'></div><div class='body'></div><div class='arm left'></div><div class='arm right'></div><div class='tool'></div><div class='tag'>${gardenersMeta[id].name}</div>`;
         gardenersLayer.appendChild(gardener);
       }
@@ -377,7 +387,7 @@
     plantEl.dataset.type = seed;
     plantEl.dataset.owner = ownerId;
     plantEl.dataset.boost = '0';
-    plantEl.innerHTML = `<div class='grow'>.</div><div class='label'>${seed}</div><div class='hint'>Growing...</div>`;
+    plantEl.innerHTML = `<div class='grow'><span class='bloom ${seedTypes[seed].bloomClass} stage-sprout'></span></div><div class='label'>${seed}</div><div class='hint'>Growing...</div>`;
     plantsLayer.appendChild(plantEl);
 
     let tick = 0;
@@ -391,9 +401,16 @@
         clearInterval(growth);
         return;
       }
-      if (tick < target / 2) growEl.textContent = '.';
-      else if (tick < target) growEl.textContent = '*';
-      else growEl.textContent = seedTypes[seed].icon;
+      const bloom = growEl.querySelector('.bloom');
+      if (!bloom) return;
+
+      if (tick < target / 2) {
+        bloom.className = `bloom ${seedTypes[seed].bloomClass} stage-sprout`;
+      } else if (tick < target) {
+        bloom.className = `bloom ${seedTypes[seed].bloomClass} stage-bud`;
+      } else {
+        bloom.className = `bloom ${seedTypes[seed].bloomClass} stage-bloom`;
+      }
 
       if (tick >= target) {
         clearInterval(growth);
@@ -619,6 +636,19 @@
     sellSeedBtn.addEventListener('click', () => userTrade('sell'));
     waterBtn.addEventListener('click', () => waterNearestPlant());
     waveBtn.addEventListener('click', () => waveToNearestGardener());
+    if (instructionsBtn && instructionsModal) {
+      instructionsBtn.addEventListener('click', () => {
+        instructionsModal.style.display = 'flex';
+      });
+    }
+    if (closeInstructions && instructionsModal) {
+      closeInstructions.addEventListener('click', () => {
+        instructionsModal.style.display = 'none';
+      });
+      instructionsModal.addEventListener('click', (event) => {
+        if (event.target === instructionsModal) instructionsModal.style.display = 'none';
+      });
+    }
 
     if (touchControls) {
       touchControls.querySelectorAll('[data-touch-key]').forEach((btn) => {
@@ -644,6 +674,8 @@
           if (action === 'plant') plantAtPlayer();
           if (action === 'water') waterNearestPlant();
           if (action === 'wave') waveToNearestGardener();
+          if (action === 'help' && instructionsModal) instructionsModal.style.display = 'flex';
+          if (action === 'home') window.location.href = '../Home.html';
         });
       });
     }
