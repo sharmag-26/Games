@@ -1,1850 +1,3383 @@
-// @ts-nocheck
-const TILE = 24, WORLD_W = 300, WORLD_H = 300, STORAGE_KEY = "sandbox_civilization_state_v1", HIGH_SCORE_KEY = "sandbox_civilization_high_score_v1";
-const WEATHER_TYPES = ["Sunny", "Cloudy", "Rain", "Storm", "Snow"], RAIDER_WAVE_MS = 120000, BULLET_SPEED = 0.016;
-const MIN_POPULATION = 420, MAX_POPULATION = 20000;
-const NAMES = ["Asha","Bren","Cato","Dina","Eryk","Faye","Gori","Hana","Ivo","Jiro","Kira","Luca","Mina","Nora","Olek","Pia","Quin","Ravi","Sana","Tari","Uma","Vik","Wren","Xara","Yuri","Zane"];
+﻿// @ts-nocheck
+const STORAGE_KEY = "sandbox_block_world_v4";
+const TILE_W = 54;
+const TILE_H = 28;
+const BLOCK_H = 26;
+const RENDER_RADIUS = 28;
+const VIEW_RADIUS = 12;
+const MIN_Z = -10;
+const MAX_Z = 40;
+const SEA_LEVEL = 4;
+const PEOPLE_PER_WORLD = 20;
+const INTERACT_DISTANCE = 4.4;
+const EYE_HEIGHT = 0.72;
+const STEP_HEIGHT = 1.15;
+const GROUND_CONTACT_EPS = 0.18;
+const PLAYER_RUN_SPEED = 8;
+const PLAYER_SPRINT_SPEED = 12.5;
+const PLAYER_SWIM_SPEED = 6.5;
+const PLAYER_JUMP_SPEED = 13.5;
+const PLAYER_GROUND_ACCEL = 40;
+const PLAYER_GROUND_DRAG = 3.4;
+const PLAYER_SWIM_ACCEL = 18;
+const PLAYER_SWIM_DRAG = 2.8;
+const PLAYER_AIR_ACCEL = 22;
+const PLAYER_AIR_DRAG = 1.8;
+const CAMERA_SMOOTHING = 5;
+const WILDLIFE_TARGET_BASE = 34;
+
+const ANIMAL_SPECIES = {
+  grass: [
+    { id: "deer", label: "Deer", shape: "grazer", scale: 1.02, speed: 1.45, depthBias: 0, palette: { body: "#9d7652", head: "#b28a63", limb: "#5f4531", accent: "#f7f2ea" } },
+    { id: "boar", label: "Boar", shape: "grazer", scale: 0.92, speed: 1.2, depthBias: 0, palette: { body: "#6c5442", head: "#846854", limb: "#412f24", accent: "#efe3d4" } },
+    { id: "hare", label: "Hare", shape: "grazer", scale: 0.64, speed: 1.8, depthBias: 0, palette: { body: "#bca58a", head: "#ceb89c", limb: "#745f4a", accent: "#fff7ef" } }
+  ],
+  sand: [
+    { id: "camel", label: "Camel", shape: "grazer", scale: 1.12, speed: 1.15, depthBias: 0, palette: { body: "#caa26a", head: "#d9b57c", limb: "#8b6a41", accent: "#f7edda" } },
+    { id: "lizard", label: "Lizard", shape: "grazer", scale: 0.52, speed: 1.7, depthBias: 0, palette: { body: "#9b9050", head: "#b1a664", limb: "#5d5732", accent: "#ebdf9a" } },
+    { id: "crab", label: "Crab", shape: "crab", scale: 0.56, speed: 1.35, depthBias: 0, palette: { body: "#ce694d", head: "#e28363", limb: "#8f3f2d", accent: "#fff1ea" } }
+  ],
+  snow: [
+    { id: "yak", label: "Yak", shape: "grazer", scale: 1.08, speed: 1.05, depthBias: 0, palette: { body: "#d7e1ea", head: "#eef5fb", limb: "#72808d", accent: "#1f2630" } },
+    { id: "fox", label: "Fox", shape: "grazer", scale: 0.72, speed: 1.65, depthBias: 0, palette: { body: "#d76f3c", head: "#ef8c54", limb: "#7a351e", accent: "#fff6f1" } },
+    { id: "snow-hare", label: "Snow Hare", shape: "grazer", scale: 0.66, speed: 1.78, depthBias: 0, palette: { body: "#eef5fb", head: "#f9fdff", limb: "#a4b3c0", accent: "#24303c" } }
+  ],
+  ocean: [
+    { id: "reef-fish", label: "Reef Fish", shape: "fish", scale: 0.72, speed: 1.7, depthBias: 0.9, palette: { body: "#58c6ff", head: "#89dcff", limb: "#2387c0", accent: "#fff7db" } },
+    { id: "sea-turtle", label: "Sea Turtle", shape: "turtle", scale: 0.94, speed: 1.0, depthBias: 1.1, palette: { body: "#5f9968", head: "#87bb7f", limb: "#396442", accent: "#d9e9b2" } },
+    { id: "jellyfish", label: "Jellyfish", shape: "jelly", scale: 0.8, speed: 0.82, depthBias: 0.45, palette: { body: "#f0a8ff", head: "#ffd0ff", limb: "#b65fc4", accent: "#fff4ff" } }
+  ]
+};
+
+const PERSON_NAMES = [
+  "Asha", "Bren", "Cato", "Dina", "Eryk", "Faye", "Gori", "Hana", "Ivo", "Jiro",
+  "Kira", "Luca", "Mina", "Nora", "Olek", "Pia", "Quin", "Ravi", "Sana", "Tari"
+];
+
+const BLOCK_LABELS = {
+  wood: "Wood Block",
+  stone: "Stone Block",
+  metal: "Metal Block",
+  tnt: "TNT",
+  fire: "Fire",
+  destroy: "Destroy Tool"
+};
+
+const WORLD_PROFILES = [
+  { name: "Amber Wilds", ore: "amber_ore", oreChance: 0.12, treeBias: 0.01, oceanBias: 0.18, mountainBias: 0.18, waterfallBias: 0.08, zombieScale: 0.9, plainHeight: 4.4 },
+  { name: "Crystal Reef", ore: "crystal_ore", oreChance: 0.11, treeBias: -0.008, oceanBias: 0.54, mountainBias: 0.08, waterfallBias: 0.18, zombieScale: 1.05, plainHeight: 4.0 },
+  { name: "Sulfur Rift", ore: "sulfur_ore", oreChance: 0.14, treeBias: -0.014, oceanBias: 0.12, mountainBias: 0.34, waterfallBias: 0.04, zombieScale: 1.25, plainHeight: 4.1 },
+  { name: "Pearl Deep", ore: "pearl_ore", oreChance: 0.1, treeBias: -0.01, oceanBias: 0.68, mountainBias: 0.12, waterfallBias: 0.22, zombieScale: 1.15, plainHeight: 3.8 },
+  { name: "Iron Expanse", ore: "metal_ore", oreChance: 0.17, treeBias: -0.004, oceanBias: 0.22, mountainBias: 0.24, waterfallBias: 0.03, zombieScale: 1.0, plainHeight: 4.2 }
+];
+
+const RESOURCE_LABELS = {
+  amber: "Amber",
+  crystal: "Crystal",
+  metal: "Metal",
+  sulfur: "Sulfur",
+  pearl: "Pearls"
+};
+
+const BIOME_LABELS = {
+  grass: "Meadow",
+  sand: "Dune Coast",
+  snow: "Frost Ridge"
+};
+
+const STALL_COLORS = {
+  wood: "#cf8a4a",
+  stone: "#9aa4b0",
+  metal: "#cfd7e2",
+  tnt: "#c85858",
+  amber: "#d89b45",
+  crystal: "#69d8ef",
+  sulfur: "#d9c24b",
+  pearl: "#eef6ff"
+};
+
+const SHOP_CATALOG = [
+  {
+    id: "timber-bundle",
+    reward: { bag: "inventory", key: "wood", amount: 10 },
+    cost: { bag: "inventory", key: "stone", amount: 5 },
+    tags: ["wood", "grass"]
+  },
+  {
+    id: "mason-stock",
+    reward: { bag: "inventory", key: "stone", amount: 10 },
+    cost: { bag: "inventory", key: "wood", amount: 5 },
+    tags: ["stone", "grass", "snow"]
+  },
+  {
+    id: "forge-bars",
+    reward: { bag: "inventory", key: "metal", amount: 3 },
+    cost: { bag: "resources", key: "amber", amount: 2 },
+    tags: ["metal", "amber", "grass"]
+  },
+  {
+    id: "blast-kit",
+    reward: { bag: "inventory", key: "tnt", amount: 2 },
+    cost: { bag: "inventory", key: "metal", amount: 4 },
+    tags: ["tnt", "sulfur"]
+  },
+  {
+    id: "amber-cache",
+    reward: { bag: "resources", key: "amber", amount: 2 },
+    cost: { bag: "inventory", key: "stone", amount: 6 },
+    tags: ["amber", "grass"]
+  },
+  {
+    id: "crystal-cache",
+    reward: { bag: "resources", key: "crystal", amount: 2 },
+    cost: { bag: "inventory", key: "metal", amount: 3 },
+    tags: ["crystal", "snow"]
+  },
+  {
+    id: "sulfur-sacks",
+    reward: { bag: "resources", key: "sulfur", amount: 2 },
+    cost: { bag: "inventory", key: "stone", amount: 5 },
+    tags: ["sulfur", "sand"]
+  },
+  {
+    id: "pearl-basket",
+    reward: { bag: "resources", key: "pearl", amount: 2 },
+    cost: { bag: "inventory", key: "wood", amount: 6 },
+    tags: ["pearl", "sand"]
+  },
+  {
+    id: "builder-crate",
+    reward: { bag: "inventory", key: "wood", amount: 6 },
+    cost: { bag: "resources", key: "crystal", amount: 1 },
+    tags: ["wood", "crystal", "snow"]
+  },
+  {
+    id: "smelter-deal",
+    reward: { bag: "inventory", key: "metal", amount: 2 },
+    cost: { bag: "resources", key: "sulfur", amount: 1 },
+    tags: ["metal", "sulfur", "sand"]
+  },
+  {
+    id: "pearl-fuse",
+    reward: { bag: "inventory", key: "tnt", amount: 1 },
+    cost: { bag: "resources", key: "pearl", amount: 1 },
+    tags: ["tnt", "pearl", "sand"]
+  }
+];
 
 export class SandboxCivilizationGame {
   constructor() {
-    this.canvas = document.getElementById("worldCanvas"); this.ctx = this.canvas?.getContext("2d");
-    this.mapCanvas = document.getElementById("mapCanvas"); this.mapCtx = this.mapCanvas?.getContext("2d");
-    this.raidWarningEl = document.getElementById("raidWarningSign");
-    if (!this.canvas || !this.ctx) throw new Error("Game UI not found. Open Flower_Garden/index.html.");
-    this.keys = {}; this.lastTs = 0; this.raiderWaveMs = 0; this.logs = []; this.worldTimeMs = 0; this.messageMs = 0; this.nextMessageMs = 12000; this.audioCtx = null; this.warTickMs = 0; this.govTickMs = 0; this.replySerial = 0; this.housingTickMs = 0;
-    this.recentNpcMessages = [];
-    this.sentMessageSet = new Set();
-    this.highScore = this.loadHighScore();
-    this.state = this.load() || this.newState(); this.ensureState();
+    this.canvas = document.getElementById("worldCanvas");
+    this.ctx = this.canvas?.getContext("2d");
+    if (!this.canvas || !this.ctx) throw new Error("Missing #worldCanvas");
+
+    this.ui = {
+      worldText: document.getElementById("worldText"),
+      peopleText: document.getElementById("peopleText"),
+      zombieText: document.getElementById("zombieText"),
+      selectedText: document.getElementById("selectedText"),
+      inventoryPanel: document.getElementById("inventoryPanel"),
+      blockSelect: document.getElementById("blockSelect"),
+      inventoryItems: document.getElementById("inventoryItems"),
+      inventoryStats: document.getElementById("inventoryStats"),
+      convertImportedBtn: document.getElementById("convertImportedBtn"),
+      inventoryToggleBtn: document.getElementById("inventoryToggleBtn"),
+      fullscreenBtn: document.getElementById("fullscreenBtn"),
+      resetWorldBtn: document.getElementById("resetWorldBtn")
+    };
+
+    this.keys = {};
+    this.mouse = { x: 0, y: 0 };
+    this.lastTs = 0;
+    this.ambientMs = 0;
+    this.message = "";
+    this.messageMs = 0;
+    this.jumpQueued = false;
+    this.inventoryButtonMap = {};
+    this.lastDamageCause = "";
+    this.cameraPoint = null;
+
+    const saved = this.load();
+    this.state = saved || this.newState();
+    this.ensureState();
+  }
+
+  getWorldProfile(seed = (this.state?.seed || 1)) {
+    const idx = Math.abs(Math.floor(seed)) % WORLD_PROFILES.length;
+    return WORLD_PROFILES[idx];
+  }
+
+  getProfileResourceKey(profile = this.getWorldProfile()) {
+    switch (profile.ore) {
+      case "amber_ore": return "amber";
+      case "crystal_ore": return "crystal";
+      case "metal_ore": return "metal";
+      case "sulfur_ore": return "sulfur";
+      case "pearl_ore": return "pearl";
+      default: return "";
+    }
+  }
+
+  getProfileResourceLabel(profile = this.getWorldProfile()) {
+    const key = this.getProfileResourceKey(profile);
+    return RESOURCE_LABELS[key] || "Metal";
+  }
+
+  getTerrainSlope(x, y, h = this.terrainHeight(x, y)) {
+    return Math.max(
+      Math.abs(h - this.terrainHeight(x + 1, y)),
+      Math.abs(h - this.terrainHeight(x - 1, y)),
+      Math.abs(h - this.terrainHeight(x, y + 1)),
+      Math.abs(h - this.terrainHeight(x, y - 1))
+    );
+  }
+
+  getProfileOreAt(x, y, z, h, profile = this.getWorldProfile(this.state.seed)) {
+    const seed = this.state.seed || 1;
+    const depth = h - z;
+    if (depth < 2) return "";
+
+    const oreRoll = this.hash01(seed * 1.91 + x * 173 + y * 311 + z * 941);
+    if (profile.ore === "pearl_ore") {
+      if (h <= SEA_LEVEL + 1 && depth <= 3 && oreRoll > 0.82) return "pearl_ore";
+    } else if (oreRoll > 1 - profile.oreChance) {
+      return profile.ore;
+    }
+
+    const metalRoll = this.hash01(seed * 2.37 + x * 271 + y * 167 + z * 673);
+    if (depth >= 3 && metalRoll > 0.94) return "metal_ore";
+    return "";
+  }
+
+  getWaterfallInfo(x, y, h = this.terrainHeight(x, y)) {
+    if (h < SEA_LEVEL + 1 || h >= MAX_Z - 3) return null;
+
+    const seed = this.state.seed || 1;
+    const profile = this.getWorldProfile(seed);
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    let bestTop = -Infinity;
+
+    for (const [dx, dy] of dirs) {
+      const sx = x + dx;
+      const sy = y + dy;
+      const sourceH = this.terrainHeight(sx, sy);
+      const drop = sourceH - h;
+      if (drop < 4) continue;
+      if (this.biomeAt(sx, sy, sourceH) === "sand") continue;
+
+      const wet = Math.sin((sx + seed * 0.17) * 0.045) + Math.cos((sy - seed * 0.11) * 0.042);
+      const gate = this.hash01(seed * 1.13 + sx * 313 + sy * 733);
+      if (wet + profile.waterfallBias < 1.08 || gate < 0.78) continue;
+
+      bestTop = Math.max(bestTop, Math.min(MAX_Z, sourceH + 1));
+    }
+
+    if (bestTop < h + 3) return null;
+    return { bottom: h + 1, top: bestTop };
+  }
+
+  createWeatherState(seed = (this.state?.seed || 1)) {
+    const px = Math.floor(this.state?.player?.x || 0);
+    const py = Math.floor(this.state?.player?.y || 0);
+    let biome = "grass";
+    if (this.state && typeof this.state.seed === "number") {
+      biome = this.biomeAt(px, py, this.terrainHeight(px, py));
+    }
+    const roll = this.hash01(seed * 0.47 + Math.floor(this.ambientMs / 12000) * 13.1 + px * 0.07 + py * 0.05);
+    let type = "clear";
+    if (biome === "snow" && roll > 0.56) type = "snow";
+    else if (roll > 0.87) type = "storm";
+    else if (roll > 0.7) type = "rain";
+    else if (roll > 0.44) type = "cloudy";
+    return {
+      type,
+      timerMs: 50000 + Math.floor(this.hash01(seed * 0.91 + roll * 997) * 40000)
+    };
+  }
+
+  getWeatherLabel(type = this.state?.weather?.type || "clear") {
+    switch (type) {
+      case "cloudy": return "Cloudy";
+      case "rain": return "Rain";
+      case "storm": return "Storm";
+      case "snow": return "Snow";
+      default: return "Clear";
+    }
+  }
+
+  getBiomeLabel(biome) {
+    return BIOME_LABELS[biome] || "Wilds";
+  }
+
+  getTradeBag(bag) {
+    return bag === "resources" ? this.state.resources : this.state.inventory;
+  }
+
+  getTradeItemLabel(bag, key) {
+    if (bag === "inventory") {
+      switch (key) {
+        case "wood": return "Wood";
+        case "stone": return "Stone";
+        case "metal": return "Metal";
+        case "tnt": return "TNT";
+        case "fire": return "Fire";
+        default: return BLOCK_LABELS[key] || key;
+      }
+    }
+    return RESOURCE_LABELS[key] || key;
+  }
+
+  formatTradeStack(item) {
+    return `${item.amount} ${this.getTradeItemLabel(item.bag, item.key)}`;
+  }
+
+  describeShopOffer(offer) {
+    if (!offer) return "";
+    return `${offer.sale ? "Sale: " : ""}${this.formatTradeStack(offer.reward)} for ${this.formatTradeStack(offer.cost)}`;
+  }
+
+  getMerchantOffer(merchant) {
+    const offers = merchant?.shop?.offers || [];
+    if (!offers.length) return null;
+    const idx = this.clamp(merchant.shop.cursor, 0, 0, offers.length - 1);
+    merchant.shop.cursor = idx;
+    return offers[idx];
+  }
+
+  isMerchant(person) {
+    return Boolean(person && person.role === "merchant" && person.shop && person.stall);
+  }
+
+  getNearbyMerchant(maxDist = 3.2) {
+    let best = null;
+    let bestD = maxDist;
+    for (const person of this.state.people) {
+      if (!this.isMerchant(person)) continue;
+      const tx = person.stall?.clerkX ?? person.x;
+      const ty = person.stall?.clerkY ?? person.y;
+      const d = Math.hypot(this.state.player.x - tx, this.state.player.y - ty);
+      if (d < bestD && Math.abs(this.state.player.z - person.z) < 2.8) {
+        bestD = d;
+        best = person;
+      }
+    }
+    return best;
+  }
+
+  cycleNearbyMerchantOffer() {
+    const merchant = this.getNearbyMerchant();
+    if (!merchant) {
+      this.say("Move up to a villager stall to browse offers.");
+      return;
+    }
+    const offers = merchant.shop?.offers || [];
+    if (!offers.length) return;
+    merchant.shop.cursor = (this.clamp(merchant.shop.cursor, 0, 0, offers.length - 1) + 1) % offers.length;
+    this.say(`${merchant.name} now offers ${this.describeShopOffer(this.getMerchantOffer(merchant))}.`);
+  }
+
+  buyNearbyMerchantOffer() {
+    const merchant = this.getNearbyMerchant();
+    if (!merchant) {
+      this.say("No stall close enough to trade.");
+      return;
+    }
+    const offer = this.getMerchantOffer(merchant);
+    if (!offer) return;
+
+    const costBag = this.getTradeBag(offer.cost.bag);
+    const rewardBag = this.getTradeBag(offer.reward.bag);
+    if ((costBag[offer.cost.key] || 0) < offer.cost.amount) {
+      this.say(`Need ${this.formatTradeStack(offer.cost)} for ${merchant.name}'s stall.`);
+      return;
+    }
+
+    costBag[offer.cost.key] -= offer.cost.amount;
+    rewardBag[offer.reward.key] = (rewardBag[offer.reward.key] || 0) + offer.reward.amount;
+    merchant.shop.cursor = (merchant.shop.cursor + 1) % Math.max(1, merchant.shop.offers.length);
+    this.say(`Bought ${this.formatTradeStack(offer.reward)} from ${merchant.name}.`);
+    this.syncUi();
+  }
+
+  pickMerchantSpecialty(slot, biome) {
+    const biomePool = biome === "sand"
+      ? ["sulfur", "pearl", "tnt", "wood"]
+      : biome === "snow"
+        ? ["crystal", "stone", "metal", "wood"]
+        : ["wood", "stone", "amber", "metal"];
+    const fullPool = [...new Set([...biomePool, "wood", "stone", "metal", "tnt", "amber", "crystal", "sulfur", "pearl"])];
+    const idx = Math.abs(Math.floor((this.state.seed || 1) * 0.13) + slot * 3) % fullPool.length;
+    return fullPool[idx];
+  }
+
+  createShopOffers(seed, slot, specialty, biome) {
+    const offers = SHOP_CATALOG
+      .map((offer, i) => {
+        let score = this.hash01(seed * 0.51 + slot * 73 + i * 19) * 6;
+        if (offer.tags.includes(specialty)) score += 50;
+        if (offer.tags.includes(biome)) score += 20;
+        return {
+          offer: {
+            ...offer,
+            reward: { ...offer.reward },
+            cost: { ...offer.cost }
+          },
+          score
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((entry) => entry.offer);
+    const saleIndex = Math.abs(Math.floor(seed * 0.17) + slot) % Math.max(1, offers.length);
+    return offers.map((offer, i) => {
+      if (i !== saleIndex) return offer;
+      const costAmount = Math.max(1, offer.cost.amount - 1);
+      return {
+        ...offer,
+        sale: true,
+        cost: { ...offer.cost, amount: costAmount }
+      };
+    });
+  }
+
+  findLocalFlatSpot(cx, cy, radius = 2, preferredBiome = "") {
+    let best = null;
+    let bestScore = -Infinity;
+    const baseX = Math.floor(cx);
+    const baseY = Math.floor(cy);
+
+    for (let x = baseX - radius; x <= baseX + radius; x += 1) {
+      for (let y = baseY - radius; y <= baseY + radius; y += 1) {
+        const h = this.terrainHeight(x, y);
+        if (h <= SEA_LEVEL + 1) continue;
+        const biome = this.biomeAt(x, y, h);
+        if (preferredBiome && biome !== preferredBiome) continue;
+        const dist = Math.hypot(x - cx, y - cy);
+        const slope = this.getTerrainSlope(x, y, h);
+        const score = 20 - dist * 2.6 - slope * 8 + this.hash01(this.state.seed * 0.79 + x * 31 + y * 47);
+        if (score > bestScore) {
+          bestScore = score;
+          best = {
+            x: x + 0.5,
+            y: y + 0.5,
+            z: this.getTopSolidZ(x, y) + 1,
+            biome
+          };
+        }
+      }
+    }
+
+    return best || {
+      x: Math.floor(cx) + 0.5,
+      y: Math.floor(cy) + 0.5,
+      z: this.getTopSolidZ(Math.floor(cx), Math.floor(cy)) + 1,
+      biome: this.biomeAt(Math.floor(cx), Math.floor(cy))
+    };
+  }
+
+  ensureMerchants() {
+    const wanted = Math.max(3, Math.min(5, Math.floor(this.state.people.length / 5)));
+    const merchants = this.state.people.filter((person) => person && person.role === "merchant");
+
+    merchants.forEach((person, slot) => {
+      const spot = this.findLocalFlatSpot(person.homeX, person.homeY, 2, person.stall?.biome || "");
+      const specialty = person.shop?.specialty || this.pickMerchantSpecialty(slot, spot.biome);
+      const offers = Array.isArray(person.shop?.offers) && person.shop.offers.length >= 3
+        ? person.shop.offers
+        : this.createShopOffers(this.state.seed, slot, specialty, spot.biome);
+      person.role = "merchant";
+      person.merchantSlot = slot;
+      person.shop = {
+        specialty,
+        title: `${this.getTradeItemLabel(["amber", "crystal", "sulfur", "pearl"].includes(specialty) ? "resources" : "inventory", specialty)} Stall`,
+        cursor: this.clamp(person.shop?.cursor, 0, 0, Math.max(0, offers.length - 1)),
+        offers,
+        open: true
+      };
+      person.stall = {
+        x: spot.x,
+        y: spot.y,
+        z: spot.z,
+        biome: spot.biome,
+        clerkX: spot.x,
+        clerkY: spot.y + 0.82,
+        color: STALL_COLORS[specialty] || "#d6934f",
+        privateZoneRadius: 2.4
+      };
+      if (!Number.isFinite(person.x) || !Number.isFinite(person.y) || Math.hypot(person.x - person.stall.x, person.y - person.stall.y) > 12) {
+        person.x = person.stall.clerkX;
+        person.y = person.stall.clerkY;
+      }
+      person.z = this.getTopSolidZ(Math.floor(person.x), Math.floor(person.y)) + 1;
+    });
+
+    if (merchants.length >= wanted) return;
+
+    for (const person of this.state.people) {
+      if (merchants.length >= wanted) break;
+      if (!person || person.role === "merchant") continue;
+      person.role = "merchant";
+      person.shop = null;
+      person.stall = null;
+      merchants.push(person);
+    }
+
+    merchants.forEach((person, slot) => {
+      if (person.shop && person.stall) return;
+      const spot = this.findLocalFlatSpot(person.homeX, person.homeY, 2);
+      const specialty = this.pickMerchantSpecialty(slot, spot.biome);
+      person.merchantSlot = slot;
+      person.shop = {
+        specialty,
+        title: `${this.getTradeItemLabel(["amber", "crystal", "sulfur", "pearl"].includes(specialty) ? "resources" : "inventory", specialty)} Stall`,
+        cursor: 0,
+        offers: this.createShopOffers(this.state.seed, slot, specialty, spot.biome),
+        open: true
+      };
+      person.stall = {
+        x: spot.x,
+        y: spot.y,
+        z: spot.z,
+        biome: spot.biome,
+        clerkX: spot.x,
+        clerkY: spot.y + 0.82,
+        color: STALL_COLORS[specialty] || "#d6934f",
+        privateZoneRadius: 2.4
+      };
+      person.x = person.stall.clerkX;
+      person.y = person.stall.clerkY;
+      person.z = this.getTopSolidZ(Math.floor(person.x), Math.floor(person.y)) + 1;
+      person.turnMs = 0.6 + this.hash01(this.state.seed + slot * 41) * 2;
+      person.actionMs = 5 + this.hash01(this.state.seed + slot * 67) * 5;
+    });
   }
 
   newState() {
-    const seed = Math.floor(Math.random() * 99999);
-    const world = this.makeWorld(seed);
-    const rivalCivilizations = this.createRivalCivilizations(world);
-    return {
-      worldSeed: seed, world, day: 1,
-      player: { x: 20, y: 20, hp: 10, armor: 0, coins: 180, ammo: 80, facingX: 1, facingY: 0, moveTarget: null },
-      weather: { type: "Sunny", tempC: 24, windKph: 8, changeMs: 45000 }, government: { type: "Democracy", taxRate: 10, lawStrictness: 50, approval: 65 },
-      market: { stock: { food: 220, seeds: 150, fuel: 110, ammo: 190 }, prices: { food: 3, seeds: 4, fuel: 7, ammo: 5 }, restockMs: 0 },
-      industry: { factoryMs: 0, reportMs: 0 },
-      diplomacy: {
-        factions: [
-          { name: "North Guild", relation: 10, atWar: false, alliance: false, trade: false },
-          { name: "Coast Union", relation: -5, atWar: false, alliance: false, trade: false },
-          { name: "Iron Bloc", relation: -20, atWar: false, alliance: false, trade: false }
-        ]
-      },
-      rival: {
-        tickMs: 0,
-        civilizations: rivalCivilizations,
-        people: this.createRivalPeople(rivalCivilizations)
-      },
-      inventory: { wood: 60, stone: 52, food: 90, clothing: 30, metal: 35, fuel: 18, seeds: 20, science: 0 },
-      villagers: this.createVillagers(MIN_POPULATION), animals: this.createAnimals(220), enemies: [], enemySpies: [],
-      bullets: [], friendlyBullets: [], enemyBullets: [], explosions: [],
-      comms: [{ from: "Council", text: "Welcome to Sandbox Civilization.", day: 1 }],
-      command: { type: "none", raw: "", targetX: null, targetY: null, ttlMs: 0 },
-      flags: { player: { color: "#2c7be5", symbol: "SC" }, raider: { color: "#b30000", symbol: "RX" } },
-      raid: { active: false, wave: 0 }, social: { anger: 18 }, prison: { prisoners: [], tickMs: 0, capturedTotal: 0 }, gameOver: { active: false, reason: "", by: "" },
-      buildings: [{ type: "government", x: 24, y: 24 }, { type: "house", x: 20, y: 24 }, { type: "house", x: 28, y: 24 }, { type: "shop", x: 24, y: 30 }, { type: "fort", x: 30, y: 20 }, { type: "market", x: 18, y: 28 }, { type: "shop", x: 34, y: 24 }, { type: "space_center", x: 38, y: 32 }],
-      navy: { fishingBoats: [], defenseBoats: [], tradingShips: [], transportShips: [] }, space: { missions: [], explored: [], colonies: 0, satellites: 0, missileDefense: 0, moonBases: 0, prestige: 0, launchAttractMs: 0, astronaut: { active: false, x: 38, y: 32, phase: "idle", mission: "", lastReport: "" }, rocket: { active: false, x: 38, y: 32, phase: "idle", mission: "" } }
+    const seed = Math.floor(Math.random() * 9999999);
+    const inventory = { wood: 24, stone: 32, metal: 18, tnt: 6, fire: 999 };
+    const imported = { wood: 0, stone: 0, metal: 0, tnt: 0 };
+    const resources = { amber: 0, crystal: 0, sulfur: 0, pearl: 0, metal: 0 };
+    const player = { x: 0, y: 0, z: 2, facing: 0, pitch: -0.12, velX: 0, velY: 0, velZ: 0, hp: 10, flyMode: false };
+    const profile = this.getWorldProfile(seed);
+    const nextState = {
+      worldIndex: 1,
+      seed,
+      player,
+      selectedBlock: "wood",
+      inventoryOpen: true,
+      inventory,
+      imported,
+      resources,
+      worldMods: {},
+      burning: {},
+      people: [],
+      animals: [],
+      zombies: [],
+      explosions: [],
+      animalSpawnMs: 2000,
+      zombieSpawnMs: 5000,
+      importTimerMs: 60000,
+      weather: this.createWeatherState(seed),
+      worldName: `${profile.name}-${(seed % 9000) + 1000}`,
+      portalTravelCount: 0,
+      worldSpawn: null,
+      recentSpawns: [],
+      personSerial: 0,
+      animalSerial: 0,
+      zombieSerial: 0
     };
+    this.state = nextState;
+    const spawn = this.findFreshSpawn({
+      seed,
+      salt: 1,
+      minRadius: 16 + Math.floor(this.hash01(seed * 0.73) * 28)
+    });
+    nextState.player.x = spawn.x;
+    nextState.player.y = spawn.y;
+    nextState.player.z = this.getTopSolidZ(Math.floor(spawn.x), Math.floor(spawn.y)) + 1;
+    nextState.worldSpawn = {
+      x: spawn.x,
+      y: spawn.y,
+      z: nextState.player.z,
+      biome: spawn.biome || this.biomeAt(Math.floor(spawn.x), Math.floor(spawn.y))
+    };
+    this.rememberSpawnPoint(spawn, seed);
+    nextState.people = this.createPeople(seed, spawn);
+    this.seedWorldAnimals();
+    this.seedWorldZombies(8);
+    this.ensureMerchants();
+    return nextState;
   }
 
   ensureState() {
-    if (!Array.isArray(this.state.world) || this.state.world.length !== WORLD_H) this.state.world = this.makeWorld(this.state.worldSeed || 4242);
-    if (!Array.isArray(this.state.villagers)) this.state.villagers = this.createVillagers(MIN_POPULATION);
-    if (!Array.isArray(this.state.animals)) this.state.animals = this.createAnimals(220);
-    if (!Array.isArray(this.state.enemies)) this.state.enemies = [];
-    if (!Array.isArray(this.state.enemySpies)) this.state.enemySpies = [];
-    if (!Array.isArray(this.state.bullets)) this.state.bullets = [];
-    if (!Array.isArray(this.state.friendlyBullets)) this.state.friendlyBullets = [];
-    if (!Array.isArray(this.state.enemyBullets)) this.state.enemyBullets = [];
-    if (!Array.isArray(this.state.explosions)) this.state.explosions = [];
-    if (!this.state.player) this.state.player = { x: 20, y: 20, hp: 10, armor: 0, coins: 100, ammo: 30, facingX: 1, facingY: 0, moveTarget: null };
-    if (!this.state.player.moveTarget || typeof this.state.player.moveTarget.x !== "number" || typeof this.state.player.moveTarget.y !== "number") this.state.player.moveTarget = null;
-    if (!this.state.inventory) this.state.inventory = { wood: 0, stone: 0, food: 20, clothing: 0, metal: 0, fuel: 0, seeds: 0, science: 0 };
-    if (!this.state.flags) this.state.flags = { player: { color: "#2c7be5", symbol: "SC" }, raider: { color: "#b30000", symbol: "RX" } };
-    if (!this.state.command) this.state.command = { type: "none", raw: "", targetX: null, targetY: null, ttlMs: 0 };
-    if (typeof this.state.command.ttlMs !== "number") this.state.command.ttlMs = 0;
-    if (!this.state.government) this.state.government = { type: "Democracy", taxRate: 10, lawStrictness: 50, approval: 65 };
-    if (typeof this.state.government.taxRate !== "number") this.state.government.taxRate = 10;
-    if (typeof this.state.government.lawStrictness !== "number") this.state.government.lawStrictness = 50;
-    if (typeof this.state.government.approval !== "number") this.state.government.approval = 65;
-    if (!this.state.weather) this.state.weather = { type: "Sunny", tempC: 24, windKph: 8, changeMs: 45000 };
-    if (!WEATHER_TYPES.includes(this.state.weather.type)) this.state.weather.type = "Sunny";
-    if (typeof this.state.weather.tempC !== "number") this.state.weather.tempC = 24;
-    if (typeof this.state.weather.windKph !== "number") this.state.weather.windKph = 8;
-    if (typeof this.state.weather.changeMs !== "number") this.state.weather.changeMs = 45000;
-    if (!this.state.market) this.state.market = { stock: { food: 220, seeds: 150, fuel: 110, ammo: 190 }, prices: { food: 3, seeds: 4, fuel: 7, ammo: 5 }, restockMs: 0 };
-    if (!this.state.market.stock) this.state.market.stock = { food: 220, seeds: 150, fuel: 110, ammo: 190 };
-    if (!this.state.market.prices) this.state.market.prices = { food: 3, seeds: 4, fuel: 7, ammo: 5 };
-    if (typeof this.state.market.restockMs !== "number") this.state.market.restockMs = 0;
-    if (!this.state.industry) this.state.industry = { factoryMs: 0, reportMs: 0 };
-    if (typeof this.state.industry.factoryMs !== "number") this.state.industry.factoryMs = 0;
-    if (typeof this.state.industry.reportMs !== "number") this.state.industry.reportMs = 0;
-    if (!this.state.diplomacy || !Array.isArray(this.state.diplomacy.factions) || this.state.diplomacy.factions.length === 0) {
-      this.state.diplomacy = { factions: [{ name: "North Guild", relation: 10, atWar: false, alliance: false, trade: false }, { name: "Coast Union", relation: -5, atWar: false, alliance: false, trade: false }, { name: "Iron Bloc", relation: -20, atWar: false, alliance: false, trade: false }] };
-    }
-    if (!this.state.rival) this.state.rival = { tickMs: 0, civilizations: this.createRivalCivilizations(), people: [] };
-    if (!Array.isArray(this.state.rival.civilizations) || this.state.rival.civilizations.length === 0) this.state.rival.civilizations = this.createRivalCivilizations();
-    if (!Array.isArray(this.state.rival.people)) this.state.rival.people = this.createRivalPeople(this.state.rival.civilizations);
-    if (typeof this.state.rival.tickMs !== "number") this.state.rival.tickMs = 0;
-    if (!this.state.raid) this.state.raid = { active: false, wave: 0 }; if (!this.state.social) this.state.social = { anger: 18 };
-    if (!this.state.prison) this.state.prison = { prisoners: [], tickMs: 0, capturedTotal: 0 };
-    if (!Array.isArray(this.state.prison.prisoners)) this.state.prison.prisoners = [];
-    if (typeof this.state.prison.tickMs !== "number") this.state.prison.tickMs = 0;
-    if (typeof this.state.prison.capturedTotal !== "number") this.state.prison.capturedTotal = 0;
-    if (!this.state.comms) this.state.comms = []; if (!this.state.buildings) this.state.buildings = [];
-    if (!this.state.navy) this.state.navy = { fishingBoats: [], defenseBoats: [], tradingShips: [], transportShips: [] };
-    if (!Array.isArray(this.state.navy.fishingBoats)) this.state.navy.fishingBoats = [];
-    if (!Array.isArray(this.state.navy.defenseBoats)) this.state.navy.defenseBoats = [];
-    if (!Array.isArray(this.state.navy.tradingShips)) this.state.navy.tradingShips = [];
-    if (!Array.isArray(this.state.navy.transportShips)) this.state.navy.transportShips = [];
-    if (!this.state.space) this.state.space = { missions: [], explored: [], colonies: 0, satellites: 0, missileDefense: 0, moonBases: 0, prestige: 0 };
-    if (!Array.isArray(this.state.space.missions)) this.state.space.missions = [];
-    if (!Array.isArray(this.state.space.explored)) this.state.space.explored = [];
-    if (typeof this.state.space.colonies !== "number") this.state.space.colonies = 0;
-    if (typeof this.state.space.satellites !== "number") this.state.space.satellites = 0;
-    if (typeof this.state.space.missileDefense !== "number") this.state.space.missileDefense = 0;
-    if (typeof this.state.space.moonBases !== "number") this.state.space.moonBases = 0;
-    if (typeof this.state.space.prestige !== "number") this.state.space.prestige = 0;
-    if (typeof this.state.space.launchAttractMs !== "number") this.state.space.launchAttractMs = 0;
-    if (!this.state.space.astronaut) this.state.space.astronaut = { active: false, x: 38, y: 32, phase: "idle", mission: "", lastReport: "" };
-    if (!this.state.space.rocket) this.state.space.rocket = { active: false, x: 38, y: 32, phase: "idle", mission: "" };
-    if (!this.state.buildings.some((b) => b.type === "space_center")) this.state.buildings.push({ type: "space_center", x: 38, y: 32 });
-    this.state.villagers = this.state.villagers.filter((v) => v && typeof v === "object");
-    this.state.animals = this.state.animals.filter((a) => a && typeof a === "object");
-    this.state.enemies = this.state.enemies.filter((e) => e && typeof e === "object");
-    this.state.enemySpies = this.state.enemySpies.filter((s) => s && typeof s === "object");
-    this.state.bullets = this.state.bullets.filter((b) => b && typeof b === "object");
-    this.state.friendlyBullets = this.state.friendlyBullets.filter((b) => b && typeof b === "object");
-    this.state.enemyBullets = this.state.enemyBullets.filter((b) => b && typeof b === "object");
-    this.state.explosions = this.state.explosions.filter((x) => x && typeof x === "object");
-    this.state.buildings = this.state.buildings.filter((b) => b && typeof b.type === "string" && typeof b.x === "number" && typeof b.y === "number");
-    this.state.comms = this.state.comms.filter((m) => m && typeof m.text === "string" && typeof m.from === "string");
-    this.state.prison.prisoners = this.state.prison.prisoners.filter((p) => p && typeof p === "object");
-    // Protect against legacy saves with extreme entity counts that can freeze rendering.
-    if (this.state.villagers.length > MAX_POPULATION) this.state.villagers = this.state.villagers.slice(0, MAX_POPULATION);
-    if (this.state.animals.length > 500) this.state.animals = this.state.animals.slice(0, 500);
-    if (this.state.enemies.length > 900) this.state.enemies = this.state.enemies.slice(0, 900);
-    if (this.state.enemySpies.length > 220) this.state.enemySpies = this.state.enemySpies.slice(0, 220);
-    if (this.state.comms.length > 500) this.state.comms = this.state.comms.slice(-500);
-    if (this.state.explosions.length > 600) this.state.explosions = this.state.explosions.slice(-600);
-    this.sentMessageSet = new Set(this.state.comms.map((m) => m?.text).filter(Boolean));
-    this.state.player.x = this.clamp(this.state.player.x, 10, 4, WORLD_W - 4); this.state.player.y = this.clamp(this.state.player.y, 10, 4, WORLD_H - 4);
-    this.state.player.hp = this.clamp(this.state.player.hp, 10, 0, 10); this.state.player.ammo = this.clamp(this.state.player.ammo, 30, 0, 9999); this.state.player.coins = this.clamp(this.state.player.coins, 120, 0, 999999);
-    if (this.state.villagers.length < MIN_POPULATION) this.state.villagers.push(...this.createVillagers(MIN_POPULATION - this.state.villagers.length));
-    this.state.villagers.forEach((v, i) => { if (!v.id) v.id = `v-${Date.now()}-${i}-${Math.floor(Math.random() * 99999)}`; if (!v.name) v.name = NAMES[i % NAMES.length]; if (typeof v.x !== "number") v.x = Math.random() * WORLD_W; if (typeof v.y !== "number") v.y = Math.random() * WORLD_H; if (typeof v.vx !== "number") v.vx = Math.random() * 2 - 1; if (typeof v.vy !== "number") v.vy = Math.random() * 2 - 1; if (!v.brain) v.brain = { state: "patrol", decisionMs: 1000 + Math.random() * 2800, workMs: 600 + Math.random() * 900 }; if (typeof v.coins !== "number") v.coins = 20 + Math.floor(Math.random() * 70); if (typeof v.mood !== "number") v.mood = this.clamp(35 + Math.random() * 25, 45, 0, 100); if (typeof v.homeId !== "string") v.homeId = ""; });
-    this.state.animals.forEach((a, i) => { if (!a.id) a.id = `a-${i}`; if (typeof a.x !== "number") a.x = Math.random() * WORLD_W; if (typeof a.y !== "number") a.y = Math.random() * WORLD_H; if (typeof a.vx !== "number") a.vx = Math.random() * 2 - 1; if (typeof a.vy !== "number") a.vy = Math.random() * 2 - 1; if (typeof a.harvestCooldownMs !== "number") a.harvestCooldownMs = 0; if (typeof a.yieldFood !== "number") a.yieldFood = 2; if (typeof a.yieldCloth !== "number") a.yieldCloth = 1; });
-    this.state.rival.civilizations.forEach((c, i) => {
-      if (!c.id) c.id = `rc-${i}`;
-      if (!c.name) c.name = `Rival ${i + 1}`;
-      if (typeof c.x !== "number" || typeof c.y !== "number") { const p = this.findRandomRivalBase(); c.x = p.x; c.y = p.y; }
-      if (typeof c.population !== "number") c.population = 120 + Math.floor(Math.random() * 120);
-      if (typeof c.military !== "number") c.military = 30 + Math.floor(Math.random() * 40);
-      if (typeof c.treasury !== "number") c.treasury = 160 + Math.floor(Math.random() * 120);
-      if (typeof c.relation !== "number") c.relation = -10;
-      if (typeof c.atWar !== "boolean") c.atWar = false;
-      if (typeof c.actionMs !== "number") c.actionMs = 6000 + Math.random() * 12000;
-      if (!c.color) c.color = i % 2 ? "#c63f3f" : "#e18728";
+    const s = this.state;
+    if (typeof s.worldIndex !== "number") s.worldIndex = 1;
+    if (typeof s.seed !== "number") s.seed = Math.floor(Math.random() * 9999999);
+    if (!s.player) s.player = { x: 0, y: 0, z: 2, facing: 0, pitch: -0.12, velX: 0, velY: 0, velZ: 0, hp: 10, flyMode: false };
+    if (typeof s.player.x !== "number") s.player.x = 0;
+    if (typeof s.player.y !== "number") s.player.y = 0;
+    if (typeof s.player.z !== "number") s.player.z = this.getTopSolidZ(0, 0) + 1;
+    if (typeof s.player.facing !== "number") s.player.facing = 0;
+    if (typeof s.player.pitch !== "number") s.player.pitch = -0.12;
+    if (typeof s.player.velX !== "number") s.player.velX = 0;
+    if (typeof s.player.velY !== "number") s.player.velY = 0;
+    if (typeof s.player.velZ !== "number") s.player.velZ = 0;
+    if (typeof s.player.hp !== "number") s.player.hp = 10;
+    if (typeof s.player.flyMode !== "boolean") s.player.flyMode = false;
+    s.player.flyMode = false;
+    if (typeof s.portalTravelCount !== "number") s.portalTravelCount = 0;
+    if (typeof s.personSerial !== "number") s.personSerial = 0;
+    if (typeof s.animalSerial !== "number") s.animalSerial = 0;
+    if (typeof s.zombieSerial !== "number") s.zombieSerial = 0;
+    if (!s.inventory) s.inventory = { wood: 24, stone: 32, metal: 18, tnt: 6, fire: 999 };
+    if (typeof s.inventory.wood !== "number") s.inventory.wood = 0;
+    if (typeof s.inventory.stone !== "number") s.inventory.stone = 0;
+    if (typeof s.inventory.metal !== "number") s.inventory.metal = 0;
+    if (typeof s.inventory.tnt !== "number") s.inventory.tnt = 0;
+    if (typeof s.inventory.fire !== "number") s.inventory.fire = 999;
+    if (!s.imported) s.imported = { wood: 0, stone: 0, metal: 0, tnt: 0 };
+    if (typeof s.imported.wood !== "number") s.imported.wood = 0;
+    if (typeof s.imported.stone !== "number") s.imported.stone = 0;
+    if (typeof s.imported.metal !== "number") s.imported.metal = 0;
+    if (typeof s.imported.tnt !== "number") s.imported.tnt = 0;
+    if (!s.resources || typeof s.resources !== "object") s.resources = { amber: 0, crystal: 0, sulfur: 0, pearl: 0, metal: 0 };
+    if (typeof s.resources.amber !== "number") s.resources.amber = 0;
+    if (typeof s.resources.crystal !== "number") s.resources.crystal = 0;
+    if (typeof s.resources.metal !== "number") s.resources.metal = 0;
+    if (typeof s.resources.sulfur !== "number") s.resources.sulfur = 0;
+    if (typeof s.resources.pearl !== "number") s.resources.pearl = 0;
+    if (!BLOCK_LABELS[s.selectedBlock]) s.selectedBlock = "wood";
+    if (!s.worldMods || typeof s.worldMods !== "object") s.worldMods = {};
+    if (!s.burning || typeof s.burning !== "object") s.burning = {};
+    if (!Array.isArray(s.people)) s.people = this.createPeople(s.seed);
+    if (s.people.length > PEOPLE_PER_WORLD) s.people = s.people.slice(0, PEOPLE_PER_WORLD);
+    s.people.forEach((person, i) => {
+      if (!person || typeof person !== "object") return;
+      if (typeof person.id !== "string" || !person.id) person.id = `p-${i}-${s.seed}`;
+      if (typeof person.name !== "string" || !person.name) person.name = PERSON_NAMES[i % PERSON_NAMES.length];
+      if (typeof person.x !== "number") person.x = 0;
+      if (typeof person.y !== "number") person.y = 0;
+      if (typeof person.homeX !== "number") person.homeX = person.x;
+      if (typeof person.homeY !== "number") person.homeY = person.y;
+      if (typeof person.z !== "number") person.z = this.getTopSolidZ(Math.floor(person.x), Math.floor(person.y)) + 1;
+      if (typeof person.dir !== "number") person.dir = this.hash01(s.seed + i * 11) * Math.PI * 2;
+      if (typeof person.turnMs !== "number") person.turnMs = 1 + this.hash01(s.seed + i * 19) * 2;
+      if (typeof person.actionMs !== "number") person.actionMs = 0.8 + this.hash01(s.seed + i * 47) * 2.1;
+      if (typeof person.walkCycle !== "number") person.walkCycle = this.hash01(s.seed + i * 13) * Math.PI * 2;
+      if (!person.inventory || typeof person.inventory !== "object") person.inventory = { wood: 2, stone: 3, metal: 1, tnt: 0 };
+      if (!person.resources || typeof person.resources !== "object") person.resources = { amber: 0, crystal: 0, metal: 0, sulfur: 0, pearl: 0 };
+      if (typeof person.role !== "string") person.role = "villager";
+      if (typeof person.inventory.wood !== "number") person.inventory.wood = 0;
+      if (typeof person.inventory.stone !== "number") person.inventory.stone = 0;
+      if (typeof person.inventory.metal !== "number") person.inventory.metal = 0;
+      if (typeof person.inventory.tnt !== "number") person.inventory.tnt = 0;
+      if (typeof person.resources.amber !== "number") person.resources.amber = 0;
+      if (typeof person.resources.crystal !== "number") person.resources.crystal = 0;
+      if (typeof person.resources.metal !== "number") person.resources.metal = 0;
+      if (typeof person.resources.sulfur !== "number") person.resources.sulfur = 0;
+      if (typeof person.resources.pearl !== "number") person.resources.pearl = 0;
     });
-    this.state.rival.people = this.state.rival.people.filter((p) => p && typeof p === "object");
-    this.state.rival.people.forEach((p, i) => {
-      if (!p.id) p.id = `rp-${Date.now()}-${i}`;
-      if (!p.name) p.name = `Rival${i}`;
-      if (!p.civId) p.civId = this.state.rival.civilizations[0]?.id || "rc-1";
-      if (typeof p.x !== "number" || typeof p.y !== "number") {
-        const civ = this.state.rival.civilizations.find((c) => c.id === p.civId) || this.state.rival.civilizations[0];
-        p.x = civ?.x || 20; p.y = civ?.y || 20;
-      }
-      if (typeof p.vx !== "number") p.vx = Math.random() * 2 - 1;
-      if (typeof p.vy !== "number") p.vy = Math.random() * 2 - 1;
-      if (!p.role) p.role = Math.random() < 0.2 ? "Guard" : "Worker";
-      if (typeof p.workMs !== "number") p.workMs = 800 + Math.random() * 1800;
+    if (s.personSerial < s.people.length) s.personSerial = s.people.length;
+    if (!Array.isArray(s.animals)) s.animals = [];
+    s.animals.forEach((animal, i) => {
+      if (!animal || typeof animal !== "object") return;
+      if (typeof animal.id !== "string" || !animal.id) animal.id = `a-${s.seed}-${i}`;
+      const species = this.getAnimalSpeciesDefinition(animal.species, animal.habitat);
+      if (typeof animal.habitat !== "string") animal.habitat = species.habitat;
+      if (typeof animal.species !== "string" || !animal.species) animal.species = species.id;
+      if (typeof animal.label !== "string" || !animal.label) animal.label = species.label;
+      if (typeof animal.shape !== "string" || !animal.shape) animal.shape = species.shape;
+      if (!animal.palette || typeof animal.palette !== "object") animal.palette = { ...species.palette };
+      if (typeof animal.scale !== "number") animal.scale = species.scale;
+      if (typeof animal.speed !== "number") animal.speed = species.speed;
+      if (typeof animal.depthBias !== "number") animal.depthBias = species.depthBias;
+      if (typeof animal.x !== "number") animal.x = s.player.x;
+      if (typeof animal.y !== "number") animal.y = s.player.y;
+      if (typeof animal.z !== "number") animal.z = animal.habitat === "ocean"
+        ? Math.max(this.getTopSolidZ(Math.floor(animal.x), Math.floor(animal.y)) + 0.8, this.getWaterTopZ(Math.floor(animal.x), Math.floor(animal.y)) - animal.depthBias)
+        : this.getTopSolidZ(Math.floor(animal.x), Math.floor(animal.y)) + 1;
+      if (typeof animal.dir !== "number") animal.dir = this.hash01(s.seed + i * 59) * Math.PI * 2;
+      if (typeof animal.turnMs !== "number") animal.turnMs = 0.6 + this.hash01(s.seed + i * 41) * 2.2;
+      if (typeof animal.walkCycle !== "number") animal.walkCycle = this.hash01(s.seed + i * 31) * Math.PI * 2;
+      if (typeof animal.bobPhase !== "number") animal.bobPhase = this.hash01(s.seed + i * 23) * Math.PI * 2;
     });
-    this.state.buildings.forEach((b) => { if (typeof b.entranceBlocked !== "boolean") b.entranceBlocked = false; });
-    this.ensureFleet();
-    this.updateHousing();
-    this.syncRivalsToDiplomacy();
-    this.reconcileRivalPeople();
-  }
-  updateHousing() {
-    const houses = this.state.buildings.filter((b) => b.type === "house");
-    const capacityPerHouse = 6;
-    const slots = new Map(houses.map((h) => [`${h.x},${h.y}`, capacityPerHouse]));
-    // Keep existing residents where possible.
-    this.state.villagers.forEach((v) => {
-      if (!v.homeId || !slots.has(v.homeId)) { v.homeId = ""; return; }
-      const left = slots.get(v.homeId) || 0;
-      if (left > 0) slots.set(v.homeId, left - 1);
-      else v.homeId = "";
+    if (s.animalSerial < s.animals.length) s.animalSerial = s.animals.length;
+    if (!Array.isArray(s.zombies)) s.zombies = [];
+    s.zombies.forEach((zombie, i) => {
+      if (!zombie || typeof zombie !== "object") return;
+      if (typeof zombie.id !== "string" || !zombie.id) zombie.id = `z-${s.seed}-${i}`;
+      if (typeof zombie.dir !== "number") zombie.dir = this.hash01(s.seed + i * 71) * Math.PI * 2;
+      if (typeof zombie.turnMs !== "number") zombie.turnMs = 0.8 + this.hash01(s.seed + i * 53) * 1.6;
+      if (typeof zombie.walkCycle !== "number") zombie.walkCycle = this.hash01(s.seed + i * 31) * Math.PI * 2;
+      if (typeof zombie.z !== "number") zombie.z = this.getTopSolidZ(Math.floor(zombie.x || 0), Math.floor(zombie.y || 0)) + 1;
     });
-    // Assign homeless villagers to nearest house with free slots.
-    this.state.villagers.forEach((v) => {
-      if (v.homeId) return;
-      let bestId = "", bestD = Infinity;
-      houses.forEach((h) => {
-        const id = `${h.x},${h.y}`;
-        const left = slots.get(id) || 0;
-        if (left <= 0) return;
-        const d = Math.hypot(h.x - v.x, h.y - v.y);
-        if (d < bestD) { bestD = d; bestId = id; }
-      });
-      if (!bestId) return;
-      v.homeId = bestId;
-      slots.set(bestId, (slots.get(bestId) || 1) - 1);
-    });
-  }
-
-  createVillagers(n) {
-    const list = [];
-    const cols = Math.max(1, Math.floor(Math.sqrt(n * (WORLD_W / WORLD_H))));
-    const rows = Math.max(1, Math.ceil(n / cols));
-    const cellW = WORLD_W / cols;
-    const cellH = WORLD_H / rows;
-    for (let i = 0; i < n; i += 1) {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const x = col * cellW + cellW * 0.2 + Math.random() * cellW * 0.6;
-      const y = row * cellH + cellH * 0.2 + Math.random() * cellH * 0.6;
-      list.push({
-        id: `v-${Date.now()}-${i}-${Math.floor(Math.random() * 99999)}`,
-        name: `${NAMES[i % NAMES.length]}${i > NAMES.length ? i : ""}`,
-        x, y,
-        vx: Math.random() * 2 - 1,
-        vy: Math.random() * 2 - 1,
-        mood: this.clamp(35 + Math.random() * 25, 45, 0, 100),
-        role: i % 7 === 0 ? "Trader" : i % 5 === 0 ? "Guard" : "Villager",
-        coins: 20 + Math.floor(Math.random() * 70),
-        homeId: null,
-        brain: { state: "patrol", decisionMs: 1000 + Math.random() * 2800, workMs: 600 + Math.random() * 900 }
-      });
+    if (s.zombieSerial < s.zombies.length) s.zombieSerial = s.zombies.length;
+    if (!Array.isArray(s.explosions)) s.explosions = [];
+    if (typeof s.animalSpawnMs !== "number") s.animalSpawnMs = 2000;
+    if (typeof s.zombieSpawnMs !== "number") s.zombieSpawnMs = 5000;
+    if (typeof s.importTimerMs !== "number") s.importTimerMs = 60000;
+    if (!s.weather || typeof s.weather !== "object") s.weather = this.createWeatherState(s.seed);
+    if (typeof s.weather.type !== "string") s.weather.type = "clear";
+    if (typeof s.weather.timerMs !== "number") s.weather.timerMs = 60000;
+    if (typeof s.worldName !== "string" || !s.worldName) s.worldName = `${this.getWorldProfile(s.seed).name}-${(s.seed % 9000) + 1000}`;
+    if (!s.worldSpawn || typeof s.worldSpawn !== "object") {
+      s.worldSpawn = { x: s.player.x, y: s.player.y, z: s.player.z, biome: this.biomeAt(Math.floor(s.player.x), Math.floor(s.player.y)) };
     }
-    return list;
-  }
-  createVillagerFromTemplate(template, idx) {
-    const p = this.findLowDensityPosition();
-    return {
-      id: `v-${Date.now()}-${idx}-${Math.floor(Math.random() * 9999)}`,
-      name: `${NAMES[Math.floor(Math.random() * NAMES.length)]}${100 + idx}`,
-      x: p.x,
-      y: p.y,
-      vx: Math.random() * 2 - 1,
-      vy: Math.random() * 2 - 1,
-      mood: this.clamp((template?.mood ?? 45) + (Math.random() * 14 - 7), 45, 0, 100),
-      role: template?.role || (Math.random() < 0.18 ? "Trader" : Math.random() < 0.24 ? "Guard" : "Villager"),
-      coins: 15 + Math.floor(Math.random() * 80),
-      homeId: null,
-      brain: { state: "patrol", decisionMs: 1000 + Math.random() * 2800, workMs: 600 + Math.random() * 900 }
-    };
-  }
-  findLowDensityPosition() {
-    let best = { x: Math.random() * WORLD_W, y: Math.random() * WORLD_H };
-    let bestScore = Infinity;
-    const tries = 20;
-    for (let i = 0; i < tries; i += 1) {
-      const x = Math.random() * WORLD_W, y = Math.random() * WORLD_H;
-      let near = 0;
-      const checks = Math.min(90, this.state?.villagers?.length || 0);
-      for (let j = 0; j < checks; j += 1) {
-        const v = this.state.villagers[(Math.random() * this.state.villagers.length) | 0];
-        if (!v) continue;
-        if (Math.hypot(v.x - x, v.y - y) < 9) near += 1;
-      }
-      if (near < bestScore) { bestScore = near; best = { x, y }; }
-      if (bestScore <= 2) break;
-    }
-    return best;
-  }
-  growPopulationForNewDay() {
-    const current = Math.max(this.state.villagers.length, MIN_POPULATION);
-    const target = Math.min(MAX_POPULATION, current * 2);
-    const needed = Math.max(0, target - this.state.villagers.length);
-    if (!needed) return;
-    const newborns = [];
-    for (let i = 0; i < needed; i += 1) {
-      const parent = this.state.villagers[Math.floor(Math.random() * Math.max(1, this.state.villagers.length))];
-      newborns.push(this.createVillagerFromTemplate(parent, i));
-    }
-    this.state.villagers.push(...newborns);
-    this.log(`Population growth: ${this.state.villagers.length} villagers.`);
-  }
-  createAnimals(n) { const kinds = [{ type: "cow", food: 4, cloth: 2 }, { type: "sheep", food: 2, cloth: 3 }, { type: "deer", food: 3, cloth: 1 }, { type: "goat", food: 2, cloth: 2 }], list = []; for (let i = 0; i < n; i += 1) { const k = kinds[Math.floor(Math.random() * kinds.length)]; list.push({ id: `a-${i}`, type: k.type, x: Math.random() * WORLD_W, y: Math.random() * WORLD_H, vx: Math.random() * 2 - 1, vy: Math.random() * 2 - 1, yieldFood: k.food, yieldCloth: k.cloth, harvestCooldownMs: 0 }); } return list; }
-  findRandomRivalBase(world = null, maxTry = 400) {
-    for (let i = 0; i < maxTry; i += 1) {
-      const x = Math.random() * WORLD_W, y = Math.random() * WORLD_H;
-      const t = world ? this.getTileFromWorld(world, x, y) : this.getTileAt(x, y);
-      if (this.isWaterType(t.type)) continue;
-      if (Math.hypot(x - this.state?.player?.x || 20, y - this.state?.player?.y || 20) < 60) continue;
-      return { x, y };
-    }
-    return { x: WORLD_W * 0.7, y: WORLD_H * 0.7 };
-  }
-  createRivalCivilizations(world = null) {
-    const a = this.findRandomRivalBase(world);
-    const b = this.findRandomRivalBase(world);
-    return [
-      { id: "rc-1", name: "Red Dominion", color: "#cc3d3d", x: a.x, y: a.y, population: 170, military: 44, treasury: 260, relation: -25, atWar: false, actionMs: 9000 },
-      { id: "rc-2", name: "Amber League", color: "#d4902b", x: b.x, y: b.y, population: 140, military: 36, treasury: 220, relation: -10, atWar: false, actionMs: 11000 }
-    ];
-  }
-  syncRivalsToDiplomacy() {
-    this.state.rival.civilizations.forEach((c) => {
-      let f = this.state.diplomacy.factions.find((x) => x.name === c.name);
-      if (!f) {
-        f = { name: c.name, relation: c.relation, atWar: c.atWar, alliance: false, trade: false };
-        this.state.diplomacy.factions.push(f);
-      } else {
-        c.relation = f.relation;
-        c.atWar = !!f.atWar;
-      }
-    });
-  }
-  isWaterType(type) { return type === "water" || type === "river" || type === "ocean"; }
-  findRandomWaterPos(maxTry = 300) {
-    for (let i = 0; i < maxTry; i += 1) {
-      const x = Math.random() * WORLD_W, y = Math.random() * WORLD_H;
-      if (this.isWaterType(this.getTileAt(x, y).type)) return { x, y };
-    }
-    return { x: WORLD_W * 0.5, y: WORLD_H * 0.5 };
-  }
-  createBoat(kind, idx = 0) {
-    const p = this.findRandomWaterPos();
-    return { id: `${kind}-${Date.now()}-${idx}-${Math.floor(Math.random() * 9999)}`, type: kind, x: p.x, y: p.y, vx: Math.random() * 2 - 1, vy: Math.random() * 2 - 1, workMs: 1200 + Math.random() * 2200 };
-  }
-  ensureFleet() {
-    if (this.state.navy.fishingBoats.length < 3) this.state.navy.fishingBoats.push(...Array.from({ length: 3 - this.state.navy.fishingBoats.length }, (_, i) => this.createBoat("fishing", i)));
-    if (this.state.navy.defenseBoats.length < 2) this.state.navy.defenseBoats.push(...Array.from({ length: 2 - this.state.navy.defenseBoats.length }, (_, i) => this.createBoat("defense", i)));
-    if (this.state.navy.tradingShips.length < 2) this.state.navy.tradingShips.push(...Array.from({ length: 2 - this.state.navy.tradingShips.length }, (_, i) => this.createBoat("trading", i)));
-    if (this.state.navy.transportShips.length < 1) this.state.navy.transportShips.push(this.createBoat("transport", 0));
-  }
-  createRivalPerson(civ, idx = 0) {
-    const a = Math.random() * Math.PI * 2;
-    const r = 3 + Math.random() * 16;
-    return {
-      id: `rp-${civ.id}-${Date.now()}-${idx}-${Math.floor(Math.random() * 9999)}`,
-      civId: civ.id,
-      civName: civ.name,
-      name: `${civ.name.split(" ")[0]} ${idx + 1}`,
-      x: civ.x + Math.cos(a) * r,
-      y: civ.y + Math.sin(a) * r,
-      vx: Math.random() * 2 - 1,
-      vy: Math.random() * 2 - 1,
-      role: Math.random() < 0.22 ? "Guard" : "Worker",
-      workMs: 800 + Math.random() * 1800
-    };
-  }
-  createRivalPeople(civs) {
-    const people = [];
-    (civs || []).forEach((civ) => {
-      const count = Math.max(18, Math.min(140, Math.floor((civ.population || 120) / 6)));
-      for (let i = 0; i < count; i += 1) people.push(this.createRivalPerson(civ, i));
-    });
-    return people;
-  }
-  reconcileRivalPeople() {
-    if (!Array.isArray(this.state.rival.people)) this.state.rival.people = [];
-    const keepIds = new Set(this.state.rival.civilizations.map((c) => c.id));
-    this.state.rival.people = this.state.rival.people.filter((p) => keepIds.has(p.civId));
-    this.state.rival.civilizations.forEach((civ) => {
-      const current = this.state.rival.people.filter((p) => p.civId === civ.id);
-      const target = Math.max(18, Math.min(140, Math.floor((civ.population || 120) / 6)));
-      if (current.length < target) {
-        const start = current.length;
-        for (let i = start; i < target; i += 1) this.state.rival.people.push(this.createRivalPerson(civ, i));
-      } else if (current.length > target) {
-        const remove = new Set(current.slice(target).map((p) => p.id));
-        this.state.rival.people = this.state.rival.people.filter((p) => !remove.has(p.id));
-      }
-    });
-  }
-  weatherMoveMul() {
-    const t = this.state.weather.type;
-    if (t === "Storm") return 0.72;
-    if (t === "Snow") return 0.78;
-    if (t === "Rain") return 0.88;
-    if (t === "Cloudy") return 0.95;
-    return 1;
-  }
-  weatherHarvestMul() {
-    const t = this.state.weather.type;
-    if (t === "Rain") return 1.15;
-    if (t === "Sunny") return 1.08;
-    if (t === "Storm") return 0.78;
-    if (t === "Snow") return 0.72;
-    return 0.95;
-  }
-  updateWeather(dt) {
-    this.state.weather.changeMs -= dt;
-    if (this.state.weather.changeMs > 0) return;
-    const current = this.state.weather.type;
-    const transitions = {
-      Sunny: ["Cloudy", "Sunny", "Rain"],
-      Cloudy: ["Sunny", "Rain", "Storm", "Cloudy"],
-      Rain: ["Cloudy", "Storm", "Rain", "Snow"],
-      Storm: ["Rain", "Cloudy", "Storm"],
-      Snow: ["Cloudy", "Snow", "Sunny"]
-    };
-    const nextPool = transitions[current] || WEATHER_TYPES;
-    let next = nextPool[Math.floor(Math.random() * nextPool.length)];
-    if (next === current && Math.random() < 0.7) next = nextPool[Math.floor(Math.random() * nextPool.length)];
-    this.state.weather.type = next;
-    if (next === "Sunny") { this.state.weather.tempC = 22 + Math.floor(Math.random() * 11); this.state.weather.windKph = 5 + Math.floor(Math.random() * 8); }
-    else if (next === "Cloudy") { this.state.weather.tempC = 16 + Math.floor(Math.random() * 10); this.state.weather.windKph = 8 + Math.floor(Math.random() * 12); }
-    else if (next === "Rain") { this.state.weather.tempC = 12 + Math.floor(Math.random() * 8); this.state.weather.windKph = 10 + Math.floor(Math.random() * 14); }
-    else if (next === "Storm") { this.state.weather.tempC = 10 + Math.floor(Math.random() * 7); this.state.weather.windKph = 18 + Math.floor(Math.random() * 24); }
-    else { this.state.weather.tempC = -2 + Math.floor(Math.random() * 7); this.state.weather.windKph = 10 + Math.floor(Math.random() * 10); }
-    this.state.weather.changeMs = 20000 + Math.random() * 18000;
-    this.pushNpcMessage("Weather Station", `Weather changed to ${this.state.weather.type} (${this.state.weather.tempC}C, ${this.state.weather.windKph}kph).`);
-  }
-  updateShips(dt) {
-    const updateOne = (boat) => {
-      boat.x += boat.vx * dt * 0.0014; boat.y += boat.vy * dt * 0.0014; boat.workMs -= dt;
-      if (Math.random() < 0.02) { boat.vx = Math.random() * 2 - 1; boat.vy = Math.random() * 2 - 1; }
-      boat.x = ((boat.x % WORLD_W) + WORLD_W) % WORLD_W; boat.y = ((boat.y % WORLD_H) + WORLD_H) % WORLD_H;
-      if (!this.isWaterType(this.getTileAt(boat.x, boat.y).type)) { const w = this.findRandomWaterPos(); boat.x = w.x; boat.y = w.y; }
-      if (boat.workMs <= 0) {
-        if (boat.type === "fishing") this.state.inventory.food += 1 + (Math.random() < 0.35 ? 1 : 0);
-        if (boat.type === "trading") { this.state.player.coins += 2 + Math.floor(Math.random() * 3); this.state.market.stock.fuel += Math.random() < 0.25 ? 1 : 0; }
-        if (boat.type === "transport") { this.state.inventory.wood += Math.random() < 0.4 ? 1 : 0; this.state.inventory.stone += Math.random() < 0.35 ? 1 : 0; }
-        if (boat.type === "defense" && this.state.enemies.length > 0) {
-          const e = this.findNearestEnemy(boat.x, boat.y, 9);
-          if (e) this.fireGun("villager", boat.x, boat.y, e.x, e.y);
-        }
-        boat.workMs = 1200 + Math.random() * 2200;
-      }
-    };
-    this.state.navy.fishingBoats.forEach(updateOne);
-    this.state.navy.defenseBoats.forEach(updateOne);
-    this.state.navy.tradingShips.forEach(updateOne);
-    this.state.navy.transportShips.forEach(updateOne);
-  }
-  launchSatellite() {
-    if (this.state.inventory.metal < 8 || this.state.inventory.fuel < 6) { this.pushNpcMessage("Space Center", `Launch blocked: need metal>=8 and fuel>=6, have metal=${Math.floor(this.state.inventory.metal)} fuel=${Math.floor(this.state.inventory.fuel)}.`); return; }
-    this.state.inventory.metal -= 8; this.state.inventory.fuel -= 6; this.state.space.satellites += 1; this.state.space.prestige += 2;
-    const launchSite = this.findNearestBuilding(this.state.player.x, this.state.player.y, ["space_center"]) || { x: 38, y: 32 };
-    this.state.space.launchAttractMs = Math.max(this.state.space.launchAttractMs, 14000);
-    this.state.space.astronaut = { active: true, x: launchSite.x, y: launchSite.y, phase: "launch", mission: "satellite", lastReport: "" };
-    this.state.space.rocket = { active: true, x: launchSite.x, y: launchSite.y, phase: "launch", mission: "satellite" };
-    this.createExplosion(launchSite.x, launchSite.y, 1.8, "255,180,80");
-    this.pushNpcMessage("Space Center", `Satellite launched. satellites=${this.state.space.satellites} prestige=${this.state.space.prestige}.`);
-  }
-  upgradeMissileDefense() {
-    if (this.state.inventory.metal < 10 || this.state.inventory.fuel < 4) { this.pushNpcMessage("Defense Command", `Missile defense upgrade blocked: need metal>=10 fuel>=4.`); return; }
-    this.state.inventory.metal -= 10; this.state.inventory.fuel -= 4; this.state.space.missileDefense += 1;
-    this.pushNpcMessage("Defense Command", `Missile defense upgraded to level ${this.state.space.missileDefense}.`);
-  }
-  startMoonBase() {
-    if (this.state.space.satellites < 1 || this.state.inventory.metal < 14 || this.state.inventory.fuel < 12) { this.pushNpcMessage("Space Center", `Moon base blocked: require satellites>=1 metal>=14 fuel>=12.`); return; }
-    this.state.inventory.metal -= 14; this.state.inventory.fuel -= 12; this.state.space.moonBases += 1; this.state.space.colonies += 1; this.state.space.prestige += 6;
-    const launchSite = this.findNearestBuilding(this.state.player.x, this.state.player.y, ["space_center"]) || { x: 38, y: 32 };
-    this.state.space.launchAttractMs = Math.max(this.state.space.launchAttractMs, 16000);
-    this.state.space.astronaut = { active: true, x: launchSite.x, y: launchSite.y, phase: "launch", mission: "moon_base", lastReport: "" };
-    this.state.space.rocket = { active: true, x: launchSite.x, y: launchSite.y, phase: "launch", mission: "moon_base" };
-    this.createExplosion(launchSite.x, launchSite.y, 2.2, "255,160,70");
-    this.pushNpcMessage("Space Center", `Moon base established. moonBases=${this.state.space.moonBases} colonies=${this.state.space.colonies}.`);
-  }
-  exploreSpace() {
-    const dest = document.getElementById("spaceDestination")?.value || "orbit";
-    const costFuel = dest === "orbit" ? 4 : dest === "moon" ? 8 : dest === "mars" ? 12 : 10;
-    if (this.state.inventory.fuel < costFuel) { this.pushNpcMessage("Mission Control", `Exploration blocked for ${dest}: need fuel>=${costFuel}.`); return; }
-    this.state.inventory.fuel -= costFuel;
-    const duration = 12000 + Math.random() * 18000;
-    this.state.space.missions.push({ id: `m-${Date.now()}-${dest}`, destination: dest, etaMs: duration, startedDay: this.state.day });
-    const launchSite = this.findNearestBuilding(this.state.player.x, this.state.player.y, ["space_center"]) || { x: 38, y: 32 };
-    this.state.space.launchAttractMs = Math.max(this.state.space.launchAttractMs, 12000);
-    this.state.space.astronaut = { active: true, x: launchSite.x, y: launchSite.y, phase: "launch", mission: dest, lastReport: "" };
-    this.state.space.rocket = { active: true, x: launchSite.x, y: launchSite.y, phase: "launch", mission: dest };
-    this.createExplosion(launchSite.x, launchSite.y, 1.6, "255,170,80");
-    this.pushNpcMessage("Mission Control", `Mission launched to ${dest}. ETA ${Math.floor(duration / 1000)}s.`);
-  }
-  updateSpaceAndMissiles(dt) {
-    this.state.space.launchAttractMs = Math.max(0, (this.state.space.launchAttractMs || 0) - dt);
-    const launchSite = this.findNearestBuilding(this.state.player.x, this.state.player.y, ["space_center"]) || { x: 38, y: 32 };
-    const astro = this.state.space.astronaut;
-    const rocket = this.state.space.rocket;
-    const reportByMission = {
-      satellite: "We can see the world grid clearly. Satellite is deploying communication arrays.",
-      moon_base: "Lunar surface is visible with crater fields. Base module telemetry is stable.",
-      orbit: "Cloud bands and coastlines are visible from low orbit.",
-      moon: "Moon approach confirmed. Surface shadows and ridges are in view.",
-      mars: "Mars horizon is red-orange with major canyon structures visible.",
-      asteroid: "Multiple asteroids detected with high-metal signatures.",
-      europa: "Europa ice shell patterns are visible with possible fracture lines."
-    };
-    if (astro?.active) {
-      astro.phase = this.state.space.launchAttractMs > 9000 ? "prep" : this.state.space.launchAttractMs > 3500 ? "launch" : "orbit";
-      if (astro.lastReport !== astro.phase) {
-        if (astro.phase === "prep") this.pushNpcMessage("Astronaut", "Pre-launch checks complete. Guidance, fuel, and life support are green.");
-        else if (astro.phase === "launch") this.pushNpcMessage("Astronaut", "Liftoff confirmed. Rocket is climbing through the lower atmosphere.");
-        else this.pushNpcMessage("Astronaut", reportByMission[astro.mission] || "We are in space and instruments are collecting data.");
-        astro.lastReport = astro.phase;
-      }
-      if (astro.phase === "prep") {
-        astro.x += (launchSite.x - astro.x) * 0.08;
-        astro.y += (launchSite.y - astro.y) * 0.08;
-      } else if (astro.phase === "launch") {
-        astro.y -= 0.0012 * dt;
-      } else {
-        astro.x += Math.sin(this.worldTimeMs * 0.0012) * 0.003 * dt;
-        astro.y += Math.cos(this.worldTimeMs * 0.0015) * 0.003 * dt;
-      }
-      if (this.state.space.launchAttractMs <= 0) {
-        astro.active = false;
-        astro.phase = "idle";
-        astro.lastReport = "idle";
-      }
-    }
-    if (rocket?.active) {
-      rocket.phase = this.state.space.launchAttractMs > 3500 ? "launch" : "space";
-      if (rocket.phase === "launch") {
-        rocket.y -= 0.0025 * dt;
-      } else {
-        rocket.x += Math.sin(this.worldTimeMs * 0.0018) * 0.002 * dt;
-        rocket.y += Math.cos(this.worldTimeMs * 0.0014) * 0.0016 * dt;
-      }
-      if (this.state.space.launchAttractMs <= 0) {
-        rocket.active = false;
-        rocket.phase = "idle";
-        rocket.x = launchSite.x;
-        rocket.y = launchSite.y;
-      }
-    }
-    for (let i = this.state.space.missions.length - 1; i >= 0; i -= 1) {
-      const m = this.state.space.missions[i];
-      m.etaMs -= dt;
-      if (m.etaMs <= 0) {
-        if (!this.state.space.explored.includes(m.destination)) this.state.space.explored.push(m.destination);
-        this.state.inventory.science += 2 + (m.destination === "mars" ? 3 : 1);
-        this.state.inventory.metal += m.destination === "asteroid" ? 6 : 2;
-        this.state.space.prestige += 1 + (m.destination === "mars" ? 2 : 0);
-        this.pushNpcMessage("Mission Control", `Mission completed: ${m.destination}. science=${Math.floor(this.state.inventory.science)} metal=${Math.floor(this.state.inventory.metal)}.`);
-        if (astro?.active && astro.mission === m.destination) {
-          astro.active = false;
-          astro.phase = "idle";
-          astro.lastReport = "idle";
-          astro.x = launchSite.x;
-          astro.y = launchSite.y;
-        }
-        if (rocket?.active && rocket.mission === m.destination) {
-          rocket.active = false;
-          rocket.phase = "idle";
-          rocket.x = launchSite.x;
-          rocket.y = launchSite.y;
-        }
-        this.state.space.missions.splice(i, 1);
-      }
-    }
-    if (this.state.space.missileDefense > 0 && this.state.enemies.length > 0 && Math.random() < 0.028 * this.state.space.missileDefense) {
-      const target = this.state.enemies[Math.floor(Math.random() * this.state.enemies.length)];
-      if (!target) return;
-      const blastRadius = 1.8 + this.state.space.missileDefense * 0.35;
-      let kills = 0;
-      for (let i = this.state.enemies.length - 1; i >= 0; i -= 1) {
-        const e = this.state.enemies[i];
-        const d = Math.hypot(e.x - target.x, e.y - target.y);
-        if (d <= blastRadius) {
-          kills += 1;
-          this.createExplosion(e.x, e.y, e.boss ? 2.3 : 1.6, "255,70,50");
-          this.state.enemies.splice(i, 1);
-        }
-      }
-      if (kills > 0) {
-        this.playExplosionSound();
-        this.pushNpcMessage("Defense Command", `Missile strike destroyed ${kills} hostile units.`);
-      }
-    }
-  }
-  clamp(v, fb, min, max) { const n = typeof v === "number" && !Number.isNaN(v) ? v : fb; return Math.min(max, Math.max(min, n)); }
-  noise(x, y, seed) { const s = Math.sin((x * 12.9898 + y * 78.233 + seed * 0.019) * 0.17) * 43758.5453; return s - Math.floor(s); }
-  makeWorld(seed) {
-    const world = [];
-    for (let y = 0; y < WORLD_H; y += 1) {
-      const row = [];
-      for (let x = 0; x < WORLD_W; x += 1) {
-        const n = this.noise(x, y, seed);
-        const n2 = this.noise(x * 0.45, y * 0.45, seed + 23);
-        const edgeDist = Math.min(x, y, WORLD_W - 1 - x, WORLD_H - 1 - y);
-        const oceanBand = edgeDist < 26;
-        const deepOceanBand = edgeDist < 15;
-
-        const riverY = WORLD_H * 0.5 + Math.sin((x + seed * 0.07) * 0.04) * 22 + Math.sin((x + seed * 0.13) * 0.012) * 12;
-        const riverWidth = 0.85 + (this.noise(x * 0.8, 11, seed + 71) * 0.8);
-        const riverContinuity = this.noise(x * 0.12, y * 0.12, seed + 177);
-        const inRiver = Math.abs(y - riverY) < riverWidth && riverContinuity < 0.52;
-
-        let type = "land";
-        if (deepOceanBand && n2 < 0.74) type = "ocean";
-        else if (oceanBand && n2 < 0.5) type = "ocean";
-        else if (inRiver) type = "river";
-        else if (n < 0.06) type = "water";
-        else if (n < 0.28) type = "forest";
-        else if (n < 0.36) type = "fruit";
-        else if (n < 0.43) type = "hill";
-        else if (n < 0.48) type = "ore";
-
-        row.push({ type, regrow: 0 });
-      }
-      world.push(row);
-    }
-    return world;
-  }
-  getTileFromWorld(world, x, y) {
-    const ix = ((Math.floor(x) % WORLD_W) + WORLD_W) % WORLD_W;
-    const iy = ((Math.floor(y) % WORLD_H) + WORLD_H) % WORLD_H;
-    const t = world?.[iy]?.[ix];
-    return t && t.type ? t : { type: "land", regrow: 0 };
-  }
-  getTileAt(x, y) {
-    if (!this.state?.world) return { type: "land", regrow: 0 };
-    return this.getTileFromWorld(this.state.world, x, y);
-  }
-  getTileRefAt(x, y) {
-    if (!this.state?.world) return null;
-    const ix = ((Math.floor(x) % WORLD_W) + WORLD_W) % WORLD_W;
-    const iy = ((Math.floor(y) % WORLD_H) + WORLD_H) % WORLD_H;
-    return this.state.world?.[iy]?.[ix] || null;
-  }
-
-  load() { try { const raw = localStorage.getItem(STORAGE_KEY); if (!raw) return null; return JSON.parse(raw); } catch { return null; } }
-  save() {
-    this.updateHighScore();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-    this.saveHighScore();
-    this.log("Progress saved.");
-  }
-  reset() { localStorage.removeItem(STORAGE_KEY); this.state = this.newState(); this.log("World reset."); }
-  loadHighScore() {
-    try {
-      const raw = localStorage.getItem(HIGH_SCORE_KEY);
-      if (!raw) return { day: 1, population: MIN_POPULATION, coins: 0, score: 0 };
-      const hs = JSON.parse(raw);
-      return {
-        day: Math.max(1, Math.floor(hs.day || 1)),
-        population: Math.max(MIN_POPULATION, Math.floor(hs.population || MIN_POPULATION)),
-        coins: Math.max(0, Math.floor(hs.coins || 0)),
-        score: Math.max(0, Math.floor(hs.score || 0))
-      };
-    } catch {
-      return { day: 1, population: MIN_POPULATION, coins: 0, score: 0 };
-    }
-  }
-  saveHighScore() { localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(this.highScore)); }
-  saveHighScoreNow() {
-    this.updateHighScore();
-    this.saveHighScore();
-    this.log(`High score saved: ${this.highScore.score}`);
-  }
-  reloadHighScore() {
-    this.highScore = this.loadHighScore();
-    this.log(`High score loaded: ${this.highScore.score}`);
-  }
-  computeScore() {
-    return Math.floor(this.state.day * 120 + this.state.villagers.length * 0.7 + this.state.player.coins * 0.35 + this.state.space.prestige * 20);
-  }
-  updateHighScore() {
-    const score = this.computeScore();
-    const improved = score > (this.highScore?.score || 0);
-    if (!improved) return;
-    this.highScore = {
-      day: Math.max(this.highScore.day || 1, this.state.day),
-      population: Math.max(this.highScore.population || MIN_POPULATION, this.state.villagers.length),
-      coins: Math.max(this.highScore.coins || 0, Math.floor(this.state.player.coins || 0)),
-      score
-    };
-    this.saveHighScore();
-    if (score % 2500 < 120) this.pushNpcMessage("Council", `New high score: ${score}.`);
+    if (!Array.isArray(s.recentSpawns)) s.recentSpawns = [];
+    if (typeof s.worldSpawn.x !== "number") s.worldSpawn.x = s.player.x;
+    if (typeof s.worldSpawn.y !== "number") s.worldSpawn.y = s.player.y;
+    if (typeof s.worldSpawn.z !== "number") s.worldSpawn.z = s.player.z;
+    if (typeof s.worldSpawn.biome !== "string") s.worldSpawn.biome = this.biomeAt(Math.floor(s.worldSpawn.x), Math.floor(s.worldSpawn.y));
+    if (typeof s.inventoryOpen !== "boolean") s.inventoryOpen = true;
+    this.repairSpawnStateIfNeeded();
+    if (!s.animals.length) this.seedWorldAnimals();
+    this.ensureMerchants();
   }
 
   init() {
-    this.bindUi(); this.resizeCanvas();
-    this.canvas.tabIndex = 0;
-    this.canvas.focus();
+    this.resizeCanvas();
+    this.bindEvents();
+    this.refreshEntityHeights();
+    this.resetCameraPoint();
+    this.buildInventoryButtons();
+    this.syncUi();
+    requestAnimationFrame((ts) => this.loop(ts));
+  }
+
+  bindEvents() {
+    const pressUi = (el, handler) => {
+      if (!el) return;
+      el.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handler();
+      });
+    };
+
     window.addEventListener("resize", () => this.resizeCanvas());
-    const onKeyDown = (e) => {
-      const k = String(e.key || "").toLowerCase();
-      const c = String(e.code || "").toLowerCase();
-      const tag = String(e.target?.tagName || "").toLowerCase();
-      const inputType = String(e.target?.type || "").toLowerCase();
-      const isTextInput = tag === "textarea" || (tag === "input" && ["text", "search", "email", "password", "url", "tel", "number"].includes(inputType));
-      const isTyping = isTextInput || e.target?.id === "messageInput";
-      const actionKey = k === "h" || c === "keyh" || k === "j" || c === "keyj" || k === "c" || c === "keyc" || k === "q" || c === "keyq" || k === "t" || c === "keyt";
-      if (actionKey) e.preventDefault();
-      if (isTyping && !actionKey && k !== "enter") return;
-      if (k) this.keys[k] = true;
-      if (c) this.keys[c] = true;
-      if (k.startsWith("arrow") || ["w", "a", "s", "d", " "].includes(k) || ["keyw", "keya", "keys", "keyd", "space"].includes(c)) e.preventDefault();
-      if (k === "h" || c === "keyh") this.harvestNearestAnimal();
-      if (k === "j" || c === "keyj") this.fireGun();
-      if (k === "c" || c === "keyc") this.captureNearestHostile();
-      if (k === "q" || c === "keyq") this.chopNearestTree();
-      if (k === "t" || c === "keyt") this.plantSeedNearPlayer();
-    };
-    const onKeyUp = (e) => {
-      const k = String(e.key || "").toLowerCase();
-      const c = String(e.code || "").toLowerCase();
-      if (k) this.keys[k] = false;
-      if (c) this.keys[c] = false;
-    };
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("blur", () => { this.keys = {}; });
-    // Fallback for environments where key events are attached to document target only.
-    document.addEventListener("keydown", onKeyDown);
-    document.addEventListener("keyup", onKeyUp);
-    this.canvas.addEventListener("click", (e) => {
-      this.canvas.focus();
-      const t = this.screenToWorld(e.clientX, e.clientY);
-      this.state.player.moveTarget = t;
-      this.log(`Moving to (${Math.floor(t.x)}, ${Math.floor(t.y)}).`);
-    });
-    this.canvas.addEventListener("contextmenu", (e) => { e.preventDefault(); this.fireGun(); });
-    requestAnimationFrame((t) => this.loop(t));
-  }
 
-  bindUi() {
-    document.querySelectorAll("button").forEach((btn) => {
-      if (!btn.getAttribute("type")) btn.setAttribute("type", "button");
-    });
-    document.getElementById("saveBtn")?.addEventListener("click", () => this.save());
-    document.getElementById("loadBtn")?.addEventListener("click", () => { const loaded = this.load(); if (loaded) { this.state = loaded; this.ensureState(); this.log("Progress loaded."); } });
-    document.getElementById("saveHighScoreBtn")?.addEventListener("click", () => this.saveHighScoreNow());
-    document.getElementById("loadHighScoreBtn")?.addEventListener("click", () => this.reloadHighScore());
-    document.getElementById("resetBtn")?.addEventListener("click", () => this.reset());
-    document.getElementById("sendMessageBtn")?.addEventListener("click", () => this.sendPlayerMessage());
-    document.getElementById("messageInput")?.addEventListener("keydown", (e) => { if (e.key === "Enter") this.sendPlayerMessage(); });
-    document.querySelectorAll("[data-build]").forEach((btn) => btn.addEventListener("click", (e) => this.buildAtPlayer(e.currentTarget?.dataset?.build || "")));
-    document.getElementById("blockEntranceBtn")?.addEventListener("click", () => this.toggleNearestEntrance(true));
-    document.getElementById("unblockEntranceBtn")?.addEventListener("click", () => this.toggleNearestEntrance(false));
-    const govType = document.getElementById("govType");
-    if (govType) { govType.value = this.state.government.type || "Democracy"; govType.addEventListener("change", () => { this.state.government.type = govType.value; }); }
-    const taxRate = document.getElementById("taxRate");
-    const taxText = document.getElementById("taxText");
-    if (taxRate) {
-      taxRate.value = String(Math.floor(this.state.government.taxRate));
-      if (taxText) taxText.textContent = `${Math.floor(this.state.government.taxRate)}%`;
-      taxRate.addEventListener("input", () => {
-        this.state.government.taxRate = this.clamp(Number(taxRate.value), 10, 0, 50);
-        if (taxText) taxText.textContent = `${Math.floor(this.state.government.taxRate)}%`;
-      });
-    }
-    const lawRate = document.getElementById("lawRate");
-    if (lawRate) {
-      lawRate.value = String(Math.floor(this.state.government.lawStrictness));
-      lawRate.addEventListener("input", () => { this.state.government.lawStrictness = this.clamp(Number(lawRate.value), 50, 0, 100); });
-    }
-    document.querySelectorAll("[data-shop-buy]").forEach((btn) => btn.addEventListener("click", (e) => this.buyFromShop(e.currentTarget?.dataset?.shopBuy || "")));
-    document.getElementById("satelliteBtn")?.addEventListener("click", () => this.launchSatellite());
-    document.getElementById("missileDefenseBtn")?.addEventListener("click", () => this.upgradeMissileDefense());
-    document.getElementById("moonBaseBtn")?.addEventListener("click", () => this.startMoonBase());
-    document.getElementById("exploreSpaceBtn")?.addEventListener("click", () => this.exploreSpace());
-    document.getElementById("applyFlagBtn")?.addEventListener("click", () => { const c = document.getElementById("playerFlagColor")?.value || "#2c7be5"; const s = (document.getElementById("playerFlagSymbol")?.value || "SC").slice(0, 2).toUpperCase(); this.state.flags.player = { color: c, symbol: s }; });
-    document.getElementById("allianceBtn")?.addEventListener("click", () => this.applyDiplomacy("alliance"));
-    document.getElementById("tradeDealBtn")?.addEventListener("click", () => this.applyDiplomacy("trade"));
-    document.getElementById("peaceBtn")?.addEventListener("click", () => this.applyDiplomacy("peace"));
-    const warBtn = document.getElementById("warBtn");
-    warBtn?.addEventListener("pointerdown", (e) => {
-      e.preventDefault?.();
-      e.stopPropagation?.();
-      this.log("Declare War button pointerdown.");
-      this.forceDeclareWar();
-    });
-    warBtn?.addEventListener("click", (e) => {
-      e.preventDefault?.();
-      e.stopPropagation?.();
-      this.log("Declare War button pressed.");
-      this.forceDeclareWar();
-    });
-    const mapDialog = document.getElementById("mapDialog");
-    document.getElementById("mapBtn")?.addEventListener("click", () => { mapDialog?.showModal?.(); this.drawMap(); });
-    document.getElementById("closeMapBtn")?.addEventListener("click", () => mapDialog?.close?.());
-    this.mapCanvas?.addEventListener("click", (e) => {
-      const rect = this.mapCanvas.getBoundingClientRect();
-      const sx = (e.clientX - rect.left) * (this.mapCanvas.width / Math.max(1, rect.width));
-      const sy = (e.clientY - rect.top) * (this.mapCanvas.height / Math.max(1, rect.height));
-      const tx = this.clamp((sx / this.mapCanvas.width) * WORLD_W, this.state.player.x, 0, WORLD_W - 1);
-      const ty = this.clamp((sy / this.mapCanvas.height) * WORLD_H, this.state.player.y, 0, WORLD_H - 1);
-      this.state.player.x = tx;
-      this.state.player.y = ty;
-      this.state.player.moveTarget = null;
-      this.log(`Moved to (${Math.floor(tx)}, ${Math.floor(ty)}) from map.`);
-      mapDialog?.close?.();
-    });
-    this.refreshFactionSelect();
-  }
-  getBuildCost(type) {
-    const costs = {
-      government: { wood: 30, stone: 40, metal: 10 },
-      monument: { wood: 20, stone: 50, metal: 8 },
-      shop: { wood: 20, stone: 12, metal: 4 },
-      house: { wood: 14, stone: 8, metal: 0 },
-      fort: { wood: 25, stone: 30, metal: 6 },
-      jail: { wood: 18, stone: 24, metal: 5 },
-      court: { wood: 16, stone: 26, metal: 6 },
-      factory: { wood: 22, stone: 22, metal: 16 },
-      port: { wood: 26, stone: 14, metal: 6 },
-      airbase: { wood: 24, stone: 28, metal: 14 },
-      space_center: { wood: 28, stone: 34, metal: 22 }
-    };
-    return costs[type] || { wood: 12, stone: 10, metal: 2 };
-  }
-  buildAtPlayer(type) {
-    if (!type) return;
-    const x = Math.round(this.state.player.x), y = Math.round(this.state.player.y);
-    const occupied = this.state.buildings.some((b) => Math.hypot(b.x - x, b.y - y) < 1.0);
-    if (occupied) { this.pushNpcMessage("Builder", "Cannot build here: location occupied."); return; }
-    // Sandbox mode: player can build anything instantly at current location.
-    this.state.buildings.push({ type, x, y });
-    if (type === "house") this.updateHousing();
-    this.log(`Built ${type} at (${x}, ${y}).`);
-    this.pushNpcMessage("Builder", `${type} built at your location (${x}, ${y}).`);
-  }
-  toggleNearestEntrance(blocked = true, silent = false) {
-    const b = this.findNearestBuilding(this.state.player.x, this.state.player.y, null, true);
-    if (!b || Math.hypot(b.x - this.state.player.x, b.y - this.state.player.y) > 4) {
-      if (!silent) this.pushNpcMessage("Builder", "No nearby building entrance to change.");
-      return false;
-    }
-    b.entranceBlocked = blocked;
-    this.log(`${blocked ? "Blocked" : "Unblocked"} entrance at ${b.type} (${Math.floor(b.x)}, ${Math.floor(b.y)}).`);
-    if (!silent) this.pushNpcMessage("Builder", `${b.type} entrance ${blocked ? "blocked" : "unblocked"}.`);
-    return true;
-  }
-  captureHostileNear(x, y, range = 2.4, by = "Guard", silent = false) {
-    if (!this.state.prison) this.state.prison = { prisoners: [], tickMs: 0, capturedTotal: 0 };
-    if (!Array.isArray(this.state.prison.prisoners)) this.state.prison.prisoners = [];
-    if (typeof this.state.prison.capturedTotal !== "number") this.state.prison.capturedTotal = 0;
-    const jail = this.findNearestBuilding(x, y, ["jail"]);
-    if (!jail) return false;
-    const enemy = this.findNearestEnemy(x, y, range);
-    let captured = null;
-    if (enemy) {
-      this.state.enemies = this.state.enemies.filter((e) => e.id !== enemy.id);
-      captured = { id: `p-${Date.now()}-${Math.floor(Math.random() * 9999)}`, name: enemy.name, kind: "enemy", jailId: `${jail.x},${jail.y}`, capturedDay: this.state.day, custodyMs: 0 };
-    } else {
-      let bestSpy = null, bd = range;
-      this.state.enemySpies.forEach((s) => {
-        const d = Math.hypot(s.x - x, s.y - y);
-        if (d < bd) { bd = d; bestSpy = s; }
-      });
-      if (bestSpy) {
-        this.state.enemySpies = this.state.enemySpies.filter((s) => s.id !== bestSpy.id);
-        captured = { id: `p-${Date.now()}-${Math.floor(Math.random() * 9999)}`, name: bestSpy.name, kind: "spy", jailId: `${jail.x},${jail.y}`, capturedDay: this.state.day, custodyMs: 0 };
+    window.addEventListener("keydown", (e) => {
+      const k = this.normalizeKey(e);
+      this.keys[k] = true;
+      if (k === "space") {
+        e.preventDefault();
+        this.jumpQueued = true;
       }
-    }
-    if (!captured) return false;
-    this.state.prison.prisoners.push(captured);
-    this.state.prison.capturedTotal += 1;
-    this.createExplosion(x, y, 0.7, "140,220,255");
-    if (!silent) this.pushNpcMessage(by, `${captured.name} captured and transferred to jail. Prisoners now ${this.state.prison.prisoners.length}.`);
-    this.log(`${by} captured ${captured.kind}: ${captured.name}.`);
-    return true;
-  }
-  captureNearestHostile() {
-    let jail = this.findNearestBuilding(this.state.player.x, this.state.player.y, ["jail"]);
-    if (!jail) {
-      const jx = Math.round(this.state.player.x + 1);
-      const jy = Math.round(this.state.player.y);
-      jail = { type: "jail", x: ((jx % WORLD_W) + WORLD_W) % WORLD_W, y: ((jy % WORLD_H) + WORLD_H) % WORLD_H, entranceBlocked: false };
-      this.state.buildings.push(jail);
-      this.pushNpcMessage("Guard", `Emergency jail established at (${Math.floor(jail.x)}, ${Math.floor(jail.y)}).`);
-    }
-    if (this.captureHostileNear(this.state.player.x, this.state.player.y, 4.2, "Guard")) return;
+      if (!e.repeat && k === "c") {
+        e.preventDefault();
+        this.destroyTargetBlock();
+      }
+      if (!e.repeat && k === "e") {
+        this.state.inventoryOpen = !this.state.inventoryOpen;
+        this.syncUi();
+      }
+      if (!e.repeat && k === "n") {
+        e.preventDefault();
+        this.cycleNearbyMerchantOffer();
+      }
+      if (!e.repeat && k === "b") {
+        e.preventDefault();
+        this.buyNearbyMerchantOffer();
+      }
+      if (!e.repeat && k >= "1" && k <= "6") {
+        const map = ["wood", "stone", "metal", "tnt", "fire", "destroy"];
+        this.state.selectedBlock = map[Number(k) - 1];
+        this.syncUi();
+      }
+    });
 
-    // Fallback: capture nearest hostile in a wider radius so capture action is reliable.
-    const nearestEnemy = this.findNearestEnemy(this.state.player.x, this.state.player.y, 40);
-    if (nearestEnemy) {
-      this.state.enemies = this.state.enemies.filter((e) => e.id !== nearestEnemy.id);
-      this.state.prison.prisoners.push({
-        id: `p-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
-        name: nearestEnemy.name,
-        kind: "enemy",
-        jailId: `${jail.x},${jail.y}`,
-        capturedDay: this.state.day,
-        custodyMs: 0
+    window.addEventListener("keyup", (e) => {
+      const k = this.normalizeKey(e);
+      this.keys[k] = false;
+      if (k === "space") e.preventDefault();
+    });
+
+    this.canvas.addEventListener("click", () => {
+      this.canvas.requestPointerLock?.();
+    });
+
+    this.canvas.addEventListener("mousemove", (e) => {
+      if (document.pointerLockElement === this.canvas) {
+        this.state.player.facing += e.movementX * 0.0028;
+        this.state.player.pitch = Math.max(-1.15, Math.min(1.0, this.state.player.pitch - e.movementY * 0.0022));
+        return;
+      }
+      const rect = this.canvas.getBoundingClientRect();
+      this.mouse.x = e.clientX - rect.left;
+      this.mouse.y = e.clientY - rect.top;
+    });
+
+    this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    this.canvas.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      if (e.button === 0) this.placeOrUseSelected();
+      if (e.button === 2) this.destroyTargetBlock();
+    });
+
+    pressUi(this.ui.inventoryToggleBtn, () => {
+      this.state.inventoryOpen = !this.state.inventoryOpen;
+      this.syncUi();
+    });
+    pressUi(this.ui.convertImportedBtn, () => this.convertImportedToBlocks());
+
+    pressUi(this.ui.fullscreenBtn, () => {
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else document.documentElement.requestFullscreen?.();
+    });
+
+    pressUi(this.ui.resetWorldBtn, () => {
+      this.startNewWorld(1);
+    });
+
+    this.ui.inventoryItems?.addEventListener("pointerdown", (e) => {
+      const btn = e.target?.closest?.("[data-block]");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const next = String(btn.getAttribute("data-block") || "wood");
+      if (!BLOCK_LABELS[next]) return;
+      this.state.selectedBlock = next;
+      this.syncUi();
+    });
+
+    this.ui.blockSelect?.addEventListener("change", (e) => {
+      const next = String(e.target?.value || "wood");
+      if (!BLOCK_LABELS[next]) return;
+      this.state.selectedBlock = next;
+      this.syncUi();
+    });
+
+    window.addEventListener("blur", () => {
+      this.keys = {};
+    });
+  }
+
+  normalizeKey(e) {
+    const raw = String(e?.key || "").toLowerCase();
+    if (e?.code === "Space" || raw === " ") return "space";
+    if (e?.code === "ShiftLeft" || e?.code === "ShiftRight" || raw === "shift") return "shift";
+    if (e?.code === "ControlLeft" || e?.code === "ControlRight" || raw === "control" || raw === "ctrl") return "control";
+    return raw;
+  }
+
+  buildInventoryButtons() {
+    if (!this.ui.inventoryItems) return;
+    const order = ["wood", "stone", "metal", "tnt", "fire", "destroy"];
+    if (!Object.keys(this.inventoryButtonMap).length) {
+      const frag = document.createDocumentFragment();
+      order.forEach((type) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "inventory-item";
+        btn.setAttribute("data-block", type);
+        this.inventoryButtonMap[type] = btn;
+        frag.appendChild(btn);
       });
-      this.state.prison.capturedTotal += 1;
-      this.createExplosion(nearestEnemy.x, nearestEnemy.y, 0.7, "140,220,255");
-      this.pushNpcMessage("Guard", `${nearestEnemy.name} captured and transferred to jail. Prisoners now ${this.state.prison.prisoners.length}.`);
-      this.log(`Guard captured enemy: ${nearestEnemy.name}.`);
+      this.ui.inventoryItems.replaceChildren(frag);
+    }
+
+    order.forEach((type) => {
+      const btn = this.inventoryButtonMap[type];
+      if (!btn) return;
+      const amt = type === "fire" ? "inf" : (type === "destroy" ? "tool" : Math.floor(this.state.inventory[type] || 0));
+      btn.classList.toggle("active", this.state.selectedBlock === type);
+      btn.innerHTML = `${BLOCK_LABELS[type]}<br><small>${amt}</small>`;
+    });
+
+    if (this.ui.blockSelect) {
+      if (!this.ui.blockSelect.options.length) {
+        this.ui.blockSelect.innerHTML = order.map((type) => `<option value="${type}">${BLOCK_LABELS[type]}</option>`).join("");
+      }
+      this.ui.blockSelect.value = this.state.selectedBlock;
+    }
+  }
+
+  syncUi() {
+    const profile = this.getWorldProfile(this.state.seed);
+    const worldResource = this.getProfileResourceLabel(profile);
+    const nearbyMerchant = this.getNearbyMerchant();
+    const nearbyOffer = nearbyMerchant ? this.getMerchantOffer(nearbyMerchant) : null;
+    if (this.ui.worldText) this.ui.worldText.textContent = `World ${this.state.worldIndex} (${this.state.worldName})`;
+    if (this.ui.peopleText) this.ui.peopleText.textContent = `People: ${this.state.people.length}/${PEOPLE_PER_WORLD}`;
+    if (this.ui.zombieText) this.ui.zombieText.textContent = `Zombies: ${this.state.zombies.length}  Animals: ${this.state.animals.length}`;
+    if (this.ui.selectedText) this.ui.selectedText.textContent = `Selected: ${BLOCK_LABELS[this.state.selectedBlock] || "Wood"}`;
+
+    if (this.ui.inventoryPanel) {
+      this.ui.inventoryPanel.classList.toggle("hidden", !this.state.inventoryOpen);
+    }
+
+    this.buildInventoryButtons();
+
+    if (this.ui.inventoryStats) {
+      const p = this.state.player;
+      this.ui.inventoryStats.innerHTML = [
+        `Wood: ${Math.floor(this.state.inventory.wood)}`,
+        `Stone: ${Math.floor(this.state.inventory.stone)}`,
+        `Metal: ${Math.floor(this.state.inventory.metal)}`,
+        `TNT: ${Math.floor(this.state.inventory.tnt)}`,
+        `Imported Wood: ${Math.floor(this.state.imported.wood)}`,
+        `Imported Stone: ${Math.floor(this.state.imported.stone)}`,
+        `Imported Metal: ${Math.floor(this.state.imported.metal)}`,
+        `Imported TNT: ${Math.floor(this.state.imported.tnt)}`,
+        `Weather: ${this.getWeatherLabel()} | Next import: ${Math.max(1, Math.ceil(this.state.importTimerMs / 1000))}s`,
+        `${worldResource}: ${Math.floor(this.state.resources[this.getProfileResourceKey(profile)] || 0)}`,
+        `Amber: ${Math.floor(this.state.resources.amber)} | Crystal: ${Math.floor(this.state.resources.crystal)} | Metal: ${Math.floor(this.state.resources.metal)} | Sulfur: ${Math.floor(this.state.resources.sulfur)} | Pearls: ${Math.floor(this.state.resources.pearl)}`,
+        `Fire: Infinite`,
+        `Health: ${Math.max(0, Math.floor(p.hp))}/10`,
+        `Wildlife: ${this.state.animals.length}`,
+        nearbyMerchant && nearbyOffer
+          ? `Nearby Stall: ${nearbyMerchant.name} | Open | ${this.describeShopOffer(nearbyOffer)}`
+          : `Nearby Stall: walk up to an awning-covered villager to trade.`,
+        `Terrain: flat plains, terraced mountains, trees, and waterfalls.`,
+        `Tip: click the world to lock mouse look. Q/E turn and R/F tilt when mouse is unlocked.`,
+        `Tip: choose Destroy Tool in inventory if you want left click to dig instead of place.`,
+        `Tip: Space jumps on land, Shift sprints, and hold Space/Ctrl to move up or down while swimming.`,
+        `Tip: press N near a stall to cycle offers and B to buy the highlighted trade.`,
+        `Tip: shops open immediately and the blue pad around each stall is its private zone.`,
+        `Tip: stack 3 metal blocks and ignite to open a portal into a different biome.`
+      ].join("<br>");
+    }
+  }
+
+  convertImportedToBlocks() {
+    const imp = this.state.imported;
+    const moved = (imp.wood || 0) + (imp.stone || 0) + (imp.metal || 0) + (imp.tnt || 0);
+    if (moved <= 0) {
+      this.say("No imported materials to convert.");
       return;
     }
-
-    let bestSpy = null, bd = 40;
-    this.state.enemySpies.forEach((s) => {
-      const d = Math.hypot(s.x - this.state.player.x, s.y - this.state.player.y);
-      if (d < bd) { bd = d; bestSpy = s; }
-    });
-    if (bestSpy) {
-      this.state.enemySpies = this.state.enemySpies.filter((s) => s.id !== bestSpy.id);
-      this.state.prison.prisoners.push({
-        id: `p-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
-        name: bestSpy.name,
-        kind: "spy",
-        jailId: `${jail.x},${jail.y}`,
-        capturedDay: this.state.day,
-        custodyMs: 0
-      });
-      this.state.prison.capturedTotal += 1;
-      this.createExplosion(bestSpy.x, bestSpy.y, 0.7, "140,220,255");
-      this.pushNpcMessage("Guard", `${bestSpy.name} captured and transferred to jail. Prisoners now ${this.state.prison.prisoners.length}.`);
-      this.log(`Guard captured spy: ${bestSpy.name}.`);
-      return;
-    }
-
-    this.pushNpcMessage("Guard", "No enemy or spy available to capture right now.");
-  }
-  updateJails(dt) {
-    if (!this.state.prison?.prisoners?.length) return;
-    const jails = this.state.buildings.filter((b) => b.type === "jail");
-    if (jails.length === 0) return;
-    const jailers = this.state.villagers.filter((v) => v.role === "Guard" || v.brain?.state === "fight" || v.brain?.state === "patrol");
-    this.state.prison.tickMs += dt;
-    const supervision = Math.max(0, jailers.length - Math.floor(this.state.prison.prisoners.length * 0.35));
-    this.state.prison.prisoners.forEach((p) => { p.custodyMs = (p.custodyMs || 0) + dt; });
-    if (this.state.prison.tickMs < 9000) return;
-    this.state.prison.tickMs = 0;
-    if (supervision > 0) {
-      const intel = Math.min(4, 1 + Math.floor(this.state.prison.prisoners.length * 0.25));
-      this.state.inventory.science += intel * 0.2;
-      this.state.player.coins += intel;
-      if (Math.random() < 0.35) this.pushNpcMessage("Jail Warden", `Jailers secured ${this.state.prison.prisoners.length} prisoners. Intelligence +${intel}.`);
-    } else if (Math.random() < 0.18 && this.state.prison.prisoners.length > 0) {
-      const escaped = this.state.prison.prisoners.shift();
-      if (escaped.kind === "spy") this.spawnEnemySpy(this.state.player.x + (Math.random() * 8 - 4), this.state.player.y + (Math.random() * 8 - 4));
-      else this.state.enemies.push({ id: `esc-${Date.now()}`, name: `${escaped.name} (Escaped)`, x: this.state.player.x + (Math.random() * 8 - 4), y: this.state.player.y + (Math.random() * 8 - 4), hp: 4, boss: false, fireMs: 800 + Math.random() * 800 });
-      this.pushNpcMessage("Jail Warden", `${escaped.name} escaped due to low supervision.`);
-    }
-  }
-  isBuildSpotFree(x, y, minDist = 1.2) {
-    return !this.state.buildings.some((b) => Math.hypot(b.x - x, b.y - y) < minDist);
-  }
-  buildByVillager(v) {
-    const maxBuildings = Math.floor(this.state.villagers.length * 0.45);
-    if (this.state.buildings.length >= maxBuildings) return false;
-    const choices = ["house", "house", "shop", "fort", "factory", "market"];
-    const type = choices[Math.floor(Math.random() * choices.length)];
-    const cost = this.getBuildCost(type);
-    if ((this.state.inventory.wood || 0) < cost.wood || (this.state.inventory.stone || 0) < cost.stone || (this.state.inventory.metal || 0) < cost.metal) return false;
-    const x = Math.round(v.x + (Math.random() * 4 - 2));
-    const y = Math.round(v.y + (Math.random() * 4 - 2));
-    if (!this.isBuildSpotFree(x, y, 1.1)) return false;
-    this.state.inventory.wood -= cost.wood;
-    this.state.inventory.stone -= cost.stone;
-    this.state.inventory.metal -= cost.metal;
-    this.state.buildings.push({ type, x: ((x % WORLD_W) + WORLD_W) % WORLD_W, y: ((y % WORLD_H) + WORLD_H) % WORLD_H });
-    if (Math.random() < 0.2) this.pushNpcMessage(v.name, `${v.name} built a ${type} near (${Math.floor(v.x)}, ${Math.floor(v.y)}).`);
-    return true;
+    this.state.inventory.wood += imp.wood || 0;
+    this.state.inventory.stone += imp.stone || 0;
+    this.state.inventory.metal += imp.metal || 0;
+    this.state.inventory.tnt += imp.tnt || 0;
+    imp.wood = 0;
+    imp.stone = 0;
+    imp.metal = 0;
+    imp.tnt = 0;
+    this.say("Imported materials converted into blocks.");
+    this.syncUi();
   }
 
-  resizeCanvas() { const rect = this.canvas.getBoundingClientRect(); this.canvas.width = Math.max(900, Math.floor(rect.width)); this.canvas.height = Math.max(560, Math.floor(rect.height)); }
-  ensureAudio() { if (this.audioCtx) return; const Ctx = window.AudioContext || window.webkitAudioContext; if (Ctx) this.audioCtx = new Ctx(); }
-  playShotSound() { this.ensureAudio(); if (!this.audioCtx) return; const t = this.audioCtx.currentTime, osc = this.audioCtx.createOscillator(), gain = this.audioCtx.createGain(); osc.type = "square"; osc.frequency.setValueAtTime(380, t); osc.frequency.exponentialRampToValueAtTime(150, t + 0.06); gain.gain.setValueAtTime(0.001, t); gain.gain.exponentialRampToValueAtTime(0.12, t + 0.01); gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08); osc.connect(gain).connect(this.audioCtx.destination); osc.start(t); osc.stop(t + 0.09); }
-  playExplosionSound() { this.ensureAudio(); if (!this.audioCtx) return; const t = this.audioCtx.currentTime, osc = this.audioCtx.createOscillator(), gain = this.audioCtx.createGain(); osc.type = "triangle"; osc.frequency.setValueAtTime(120, t); osc.frequency.exponentialRampToValueAtTime(45, t + 0.2); gain.gain.setValueAtTime(0.001, t); gain.gain.exponentialRampToValueAtTime(0.16, t + 0.02); gain.gain.exponentialRampToValueAtTime(0.001, t + 0.26); osc.connect(gain).connect(this.audioCtx.destination); osc.start(t); osc.stop(t + 0.28); }
-  createExplosion(x, y, size = 1, color = "255,130,40") { this.state.explosions.push({ x, y, size, life: 280, maxLife: 280, color }); }
-  log(msg) { this.logs.push(`[Day ${this.state.day}] ${msg}`); if (this.logs.length > 90) this.logs.shift(); }
-  refreshFactionSelect() {
-    const sel = document.getElementById("factionSelect");
-    if (!sel) return;
-    if (!this.state.diplomacy || !Array.isArray(this.state.diplomacy.factions)) this.state.diplomacy = { factions: [] };
-    if (this.state.diplomacy.factions.length === 0) this.state.diplomacy.factions.push({ name: "North Guild", relation: 10, atWar: false, alliance: false, trade: false });
-    // Ensure rival civilizations are always selectable diplomacy targets.
-    this.state.rival?.civilizations?.forEach((civ) => {
-      if (!this.state.diplomacy.factions.some((f) => f.name === civ.name)) {
-        this.state.diplomacy.factions.push({ name: civ.name, relation: civ.relation ?? -10, atWar: !!civ.atWar, alliance: false, trade: false });
-      }
-    });
-    sel.innerHTML = this.state.diplomacy.factions.map((f, i) => `<option value="${i}">${f.name} (rel ${Math.round(f.relation)})</option>`).join("");
-    if (sel.options.length > 0 && sel.selectedIndex < 0) sel.selectedIndex = 0;
-  }
-  getSelectedFaction() {
-    const sel = document.getElementById("factionSelect");
-    const idx = Math.max(0, Number(sel?.selectedIndex ?? sel?.value ?? 0));
-    return this.state.diplomacy.factions[idx] || this.state.diplomacy.factions[0];
-  }
-  applyDiplomacy(action) {
-    let f = this.getSelectedFaction();
-    if (!f) {
-      if (!this.state.diplomacy || !Array.isArray(this.state.diplomacy.factions)) this.state.diplomacy = { factions: [] };
-      if (this.state.diplomacy.factions.length === 0) this.state.diplomacy.factions.push({ name: "North Guild", relation: 10, atWar: false, alliance: false, trade: false });
-      f = this.state.diplomacy.factions[0];
-    }
-    if (action === "alliance") { f.alliance = true; f.atWar = false; f.relation = Math.min(100, f.relation + 20); }
-    if (action === "trade") { f.trade = true; f.relation = Math.min(100, f.relation + 10); this.state.market.stock.food += 15; this.state.market.stock.fuel += 8; }
-    if (action === "peace") { f.atWar = false; f.relation = Math.min(100, f.relation + 12); }
-    if (action === "war") {
-      f.atWar = true; f.alliance = false; f.trade = false; f.relation = Math.max(-100, f.relation - 18);
-      // Always generate an immediate visible combat response.
-      this.spawnFactionRaid(f.name);
-      this.spawnFactionRaid(f.name);
-      this.ensureWarHostiles(f.name, 10);
-      this.state.raid.active = true;
-      const hostileNow = this.state.enemies.length;
-      this.log(`WAR DECLARED on ${f.name}. Enemy raiders deployed (${hostileNow} hostiles active).`);
-      this.pushNpcMessage("War Room", `War declared on ${f.name}. Immediate enemy assault detected: ${hostileNow} hostiles.`);
-    }
-    const rc = this.state.rival.civilizations.find((c) => c.name === f.name);
-    if (rc) { rc.relation = f.relation; rc.atWar = !!f.atWar; if (action === "alliance") rc.relation = Math.max(rc.relation, 25); }
-    this.pushNpcMessage("Council", `Diplomacy update: ${f.name} -> ${action}. relation=${Math.round(f.relation)} war=${f.atWar}`);
-    this.refreshFactionSelect();
-  }
-  forceDeclareWar() {
-    const f = this.getSelectedFaction() || this.state.diplomacy?.factions?.[0] || { name: "Rival Faction", relation: -20, atWar: false, alliance: false, trade: false };
-    if (!this.state.diplomacy || !Array.isArray(this.state.diplomacy.factions)) this.state.diplomacy = { factions: [] };
-    if (!this.state.diplomacy.factions.some((x) => x.name === f.name)) this.state.diplomacy.factions.push(f);
-    f.atWar = true;
-    f.alliance = false;
-    f.trade = false;
-    f.relation = Math.max(-100, (f.relation ?? -10) - 20);
-    this.ensureWarHostiles(f.name, 12);
-    this.state.raid.active = true;
-    const rc = this.state.rival.civilizations.find((c) => c.name === f.name);
-    if (rc) { rc.atWar = true; rc.relation = f.relation; }
-    this.pushNpcMessage("War Room", `Forced war start with ${f.name}. Hostiles active: ${this.state.enemies.length}.`);
-    this.log(`Forced war start: ${f.name}, hostiles=${this.state.enemies.length}.`);
-    this.refreshFactionSelect();
-  }
-  spawnFactionRaid(name = "Faction") {
-    const count = 5 + Math.floor(Math.random() * 4);
-    const sx = this.state.player.x + (Math.random() * 20 - 10);
-    const sy = this.state.player.y + (Math.random() * 20 - 10);
-    const leader = { id: `fl-${Date.now()}`, name: `${name} Leader`, x: sx + 0.6, y: sy + 0.6, hp: 12, boss: false, leader: true, fireMs: 520 };
-    for (let i = 0; i < Math.max(1, count - 1); i += 1) {
-      this.state.enemies.push({ id: `fw-${Date.now()}-${i}`, name: `${name} Raider`, x: sx + Math.random() * 6 - 3, y: sy + Math.random() * 6 - 3, hp: 5, boss: false, fireMs: 700 + Math.random() * 900 });
-    }
-    this.state.enemies.push(leader);
-    this.spawnEnemySpy(sx, sy);
-    this.state.raid.active = true;
-  }
-  ensureWarHostiles(name = "Faction", minHostiles = 10) {
-    let guard = 0;
-    while (this.state.enemies.length < minHostiles && guard < 4) {
-      this.spawnFactionRaid(name);
-      guard += 1;
-    }
-    if (this.state.enemies.length === 0) {
-      const sx = this.state.player.x + (Math.random() * 10 - 5);
-      const sy = this.state.player.y + (Math.random() * 10 - 5);
-      this.state.enemies.push({ id: `fw-fallback-${Date.now()}`, name: `${name} Raider`, x: sx, y: sy, hp: 6, boss: false, fireMs: 650 });
-    }
-    this.state.raid.active = true;
-  }
-  spawnEnemySpy(x = null, y = null) {
-    const sx = typeof x === "number" ? x : this.state.player.x + (Math.random() * 36 - 18);
-    const sy = typeof y === "number" ? y : this.state.player.y + (Math.random() * 36 - 18);
-    this.state.enemySpies.push({
-      id: `spy-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
-      name: "Enemy Spy",
-      x: sx + (Math.random() * 3 - 1.5),
-      y: sy + (Math.random() * 3 - 1.5),
-      hp: 4,
-      vx: Math.random() * 2 - 1,
-      vy: Math.random() * 2 - 1,
-      cooldownMs: 0,
-      seenMs: 0
-    });
-  }
-  buyFromShop(item) {
-    const price = this.state.market.prices[item];
-    const stock = this.state.market.stock[item];
-    if (!price || stock <= 0) return;
-    if (this.state.player.coins < price) { this.pushNpcMessage("Shop", `Cannot buy ${item}: need ${price} coins, you have ${Math.floor(this.state.player.coins)}.`); return; }
-    this.state.player.coins -= price;
-    this.state.market.stock[item] -= 1;
-    if (item === "ammo") this.state.player.ammo += 3;
-    else this.state.inventory[item] = (this.state.inventory[item] || 0) + 1;
-    this.pushNpcMessage("Shop", `Sold 1 ${item} at ${price} coins. Stock now ${Math.floor(this.state.market.stock[item])}.`);
-  }
-  updateSupplyAndWar(dt) {
-    this.state.market.restockMs += dt;
-    if (this.state.market.restockMs > 10000) {
-      this.state.market.restockMs = 0;
-      const shortage = this.state.inventory.food < this.state.villagers.length * 0.8;
-      const w = this.state.weather.type;
-      const weatherFoodBonus = w === "Rain" ? 2 : w === "Sunny" ? 1 : w === "Storm" ? -2 : w === "Snow" ? -1 : 0;
-      const weatherFuelUse = w === "Storm" ? 1 : w === "Snow" ? 1 : 0;
-      this.state.market.stock.food += shortage ? 8 : 3;
-      this.state.market.stock.food += weatherFoodBonus;
-      this.state.market.stock.seeds += 2;
-      this.state.market.stock.fuel += 1;
-      this.state.market.stock.ammo += this.state.enemies.length > 8 ? 3 : 1;
-      this.state.market.prices.food = this.clamp(this.state.market.prices.food + (shortage ? 0.2 : -0.1), 3, 2, 9);
-      this.state.market.prices.fuel = this.clamp(this.state.market.prices.fuel + (this.state.enemies.length > 8 ? 0.15 : -0.05), 7, 4, 14);
-      this.state.market.prices.ammo = this.clamp(this.state.market.prices.ammo + (this.state.enemies.length > 8 ? 0.2 : -0.08), 5, 3, 14);
-      this.state.inventory.food = Math.max(0, this.state.inventory.food - Math.max(1, Math.floor(this.state.villagers.length * 0.008)));
-      if (weatherFuelUse > 0) this.state.inventory.fuel = Math.max(0, this.state.inventory.fuel - weatherFuelUse);
-    }
-    // Raiders are controlled by the global 2-minute timer in update(), not by background war ticks.
-    const factories = this.state.buildings.filter((b) => b.type === "factory").length;
-    if (factories > 0) {
-      this.state.industry.factoryMs += dt;
-      this.state.industry.reportMs += dt;
-      if (this.state.industry.factoryMs >= 9000) {
-        this.state.industry.factoryMs = 0;
-        const produced = factories * (1 + (this.state.enemies.length > 8 ? 1 : 0));
-        this.state.market.stock.ammo += produced;
-        this.state.inventory.metal = Math.max(0, this.state.inventory.metal - Math.min(this.state.inventory.metal, Math.ceil(produced * 0.5)));
-      }
-      if (this.state.industry.reportMs >= 18000) {
-        this.state.industry.reportMs = 0;
-        this.pushNpcMessage("Factory Foreman", `Ammo production active: ${factories} factory(s), shop ammo stock=${Math.floor(this.state.market.stock.ammo)}.`);
-      }
-    } else {
-      this.state.industry.factoryMs = 0;
-      this.state.industry.reportMs = 0;
-    }
-  }
-  updateRivalCivilizations(dt) {
-    this.state.rival.tickMs += dt;
-    this.state.rival.civilizations.forEach((civ) => {
-      civ.actionMs -= dt;
-      if (civ.actionMs > 0) return;
-      civ.actionMs = 14000 + Math.random() * 26000;
-
-      civ.population += 1 + Math.floor(Math.random() * 3);
-      civ.treasury += 2 + Math.floor(civ.population * 0.01);
-      civ.military += Math.random() < 0.4 ? 1 : 0;
-
-      if (Math.random() < 0.35) {
-        this.state.market.stock.food += 3;
-        this.state.player.coins += 2;
-        this.pushNpcMessage("Trader", `Rival trade window with ${civ.name}: +3 food stock, +2 coins.`);
-      } else {
-        civ.relation = this.clamp(civ.relation + (Math.random() < 0.5 ? -2 : 2), civ.relation, -100, 100);
-      }
-    });
-    this.reconcileRivalPeople();
-  }
-  updateRivalPeople(dt) {
-    const speed = 0.0012 * dt * this.weatherMoveMul();
-    this.state.rival.people.forEach((p) => {
-      const civ = this.state.rival.civilizations.find((c) => c.id === p.civId);
-      if (!civ) return;
-      const leash = civ.atWar ? 20 : 14;
-      p.workMs -= dt;
-      if (p.workMs <= 0) {
-        p.vx = Math.random() * 2 - 1;
-        p.vy = Math.random() * 2 - 1;
-        p.workMs = 900 + Math.random() * 2000;
-      }
-      const dx = civ.x - p.x, dy = civ.y - p.y;
-      const d = Math.hypot(dx, dy) || 1;
-      if (d > leash) {
-        p.x += (dx / d) * speed * 1.8;
-        p.y += (dy / d) * speed * 1.8;
-      } else {
-        p.x += p.vx * speed;
-        p.y += p.vy * speed;
-      }
-      p.x = ((p.x % WORLD_W) + WORLD_W) % WORLD_W;
-      p.y = ((p.y % WORLD_H) + WORLD_H) % WORLD_H;
-    });
-  }
-  updateGovernment(dt) {
-    this.govTickMs += dt;
-    if (this.govTickMs < 6000) return;
-    this.govTickMs = 0;
-    const tax = this.clamp(this.state.government.taxRate, 10, 0, 50);
-    const strict = this.clamp(this.state.government.lawStrictness, 50, 0, 100);
-    const wars = this.state.diplomacy.factions.filter((f) => f.atWar).length;
-    const weatherStress = this.state.weather.type === "Storm" ? 1.2 : this.state.weather.type === "Snow" ? 0.9 : this.state.weather.type === "Rain" ? 0.45 : 0;
-    const income = Math.max(0, Math.floor(this.state.villagers.length * (tax / 100) * 0.22));
-    this.state.player.coins += income;
-    const angerRise = Math.max(0, tax - 18) * 0.22;
-    const relief = tax <= 18 ? 0.45 : 0.1;
-    this.state.social.anger = this.clamp(this.state.social.anger + angerRise + weatherStress - relief, 18, 0, 100);
-    this.state.government.approval = this.clamp(
-      this.state.government.approval + (income > 0 ? 0.7 : -0.3) - (tax > 30 ? 1.2 : 0.2) - (strict > 80 ? 0.8 : 0) - wars * 0.5 - (this.state.social.anger > 60 ? 1.1 : 0),
-      65,
-      0,
-      100
-    );
-    if (Math.random() < 0.12) {
-      this.pushNpcMessage("Council", `Gov report: type=${this.state.government.type}, tax=${Math.floor(tax)}%, strict=${Math.floor(strict)}, income=${income}, approval=${Math.floor(this.state.government.approval)}%, anger=${Math.floor(this.state.social.anger)}%.`);
-    }
-  }
-  pushNpcMessage(from, text) {
-    let finalText = String(text);
-    if (this.sentMessageSet.has(finalText)) finalText = `${finalText} [d${this.state.day} t${Math.floor(this.worldTimeMs / 1000)}]`;
-    this.sentMessageSet.add(finalText);
-    this.state.comms.push({ from, text: finalText, day: this.state.day });
-  }
-  pickUniqueMessage(pool) {
-    if (!Array.isArray(pool) || pool.length === 0) return "";
-    const recentSet = new Set(this.recentNpcMessages);
-    let choices = pool.filter((m) => !recentSet.has(m));
-    if (choices.length === 0) choices = pool;
-    const selected = choices[Math.floor(Math.random() * choices.length)];
-    this.recentNpcMessages.push(selected);
-    if (this.recentNpcMessages.length > 24) this.recentNpcMessages.shift();
-    return selected;
-  }
-  parsePlayerOrder(text) {
-    const lower = text.toLowerCase();
-    let type = "custom", targetX = null, targetY = null;
-    const forcedOrder = lower.startsWith("order ") || lower.startsWith("command ");
-    const forcedText = forcedOrder ? lower.replace(/^(order|command)\s+/, "").trim() : lower;
-    const source = forcedOrder ? forcedText : lower;
-    const moveMatch = lower.match(/(?:move|go|to)\s+(-?\d+)[,\s]+(-?\d+)/);
-    if (moveMatch) {
-      type = "move";
-      targetX = this.clamp(Number(moveMatch[1]), this.state.player.x, 0, WORLD_W - 1);
-      targetY = this.clamp(Number(moveMatch[2]), this.state.player.y, 0, WORLD_H - 1);
-    } else if (source.includes("harvest")) type = "harvest";
-    else if (source.includes("trade") || source.includes("shop") || source.includes("supply")) type = "trade";
-    else if (source.includes("fight") || source.includes("defend") || source.includes("raid") || source.includes("war")) type = "fight";
-    else if (source.includes("build") || source.includes("work")) type = "work";
-    else if (source.includes("block entrance")) type = "block";
-    else if (source.includes("unblock entrance")) type = "unblock";
-    else if (source.includes("patrol") || source.includes("guard")) type = "patrol";
-    else if (source.includes("tax")) type = "tax";
-    else if (source.includes("law") || source.includes("strict")) type = "law";
-    else if (source.includes("space") || source.includes("satellite") || source.includes("missile")) type = "space";
-    else if (source.includes("status") || source.includes("report")) type = "talk";
-    return { type, raw: text, targetX, targetY };
+  resizeCanvas() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = Math.floor(w * dpr);
+    this.canvas.height = Math.floor(h * dpr);
+    this.canvas.style.width = `${w}px`;
+    this.canvas.style.height = `${h}px`;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  sendPlayerMessage() {
-    const input = document.getElementById("messageInput"), text = (input?.value || "").trim(); if (!text) return; if (input) input.value = "";
-    const lower = text.toLowerCase();
-    this.state.comms.push({ from: "You", text, day: this.state.day });
-    this.pushNpcMessage("Council", `Command received: "${text}". Processing now.`);
-    const parsed = this.parsePlayerOrder(text);
-    if (lower.includes("declare war") || lower.startsWith("war ") || lower.includes("war on")) {
-      this.forceDeclareWar();
-      this.pushNpcMessage("War Room", "War command accepted from message input.");
-    }
-    const order = parsed.type;
-    this.state.command = { type: parsed.type, raw: parsed.raw, targetX: parsed.targetX, targetY: parsed.targetY, ttlMs: 120000 };
-    const forcedState = ["harvest","trade","fight","work","patrol","move"].includes(order) ? order : "work";
-    this.state.villagers.forEach((v) => {
-      v.brain.state = forcedState;
-      v.brain.decisionMs = 7000 + Math.random() * 6000;
-    });
-    const villager = this.state.villagers.length > 0 ? this.state.villagers[Math.floor(Math.random() * this.state.villagers.length)] : null;
-    const name = villager?.name || "Council";
-    const raiders = this.state.enemies.length;
-    const wars = this.state.diplomacy.factions.filter((f) => f.atWar).length;
-    const angry = this.state.villagers.filter((v) => (v.mood || 0) > 80).length;
-    const hasBuildMaterials = this.state.inventory.wood >= 25 && this.state.inventory.stone >= 20;
-    const foodLow = this.state.inventory.food < this.state.villagers.length * 0.9;
-    this.replySerial += 1;
-
-    let reply = "";
-    if (order === "fight") {
-      reply = `${name}: Defense order accepted. Units are switching to combat posture now. Raiders detected=${raiders}.`;
-    } else if (order === "harvest") {
-      reply = `${name}: Harvest order accepted. Teams are collecting resources now. Food=${Math.floor(this.state.inventory.food)}.`;
-    } else if (order === "trade") {
-      reply = `${name}: Trade order accepted. Shop stock food=${Math.floor(this.state.market.stock.food)}, fuel=${Math.floor(this.state.market.stock.fuel)}, ammo=${Math.floor(this.state.market.stock.ammo)}.`;
-    } else if (order === "work") {
-      reply = `${name}: Work order accepted. Crews are active now (wood=${Math.floor(this.state.inventory.wood)}, stone=${Math.floor(this.state.inventory.stone)}).`;
-    } else if (order === "block") {
-      const ok = this.toggleNearestEntrance(true, true);
-      reply = ok ? `${name}: Entrance block order accepted and executed.` : `${name}: Entrance block order accepted and queued until a building entrance is in range.`;
-    } else if (order === "unblock") {
-      const ok = this.toggleNearestEntrance(false, true);
-      reply = ok ? `${name}: Entrance unblock order accepted and executed.` : `${name}: Entrance unblock order accepted and queued until a building entrance is in range.`;
-    } else if (order === "patrol") {
-      reply = `${name}: Patrol routes updated. Angry villagers=${angry}, wars=${wars}, active raiders=${raiders}.`;
-    } else if (lower.includes("tax")) {
-      reply = `${name}: Tax report: rate=${Math.floor(this.state.government.taxRate)}%, approval=${Math.floor(this.state.government.approval)}%, anger=${Math.floor(this.state.social.anger)}%.`;
-    } else if (lower.includes("law") || lower.includes("strict")) {
-      reply = `${name}: Law strictness is ${Math.floor(this.state.government.lawStrictness)}. High strictness reduces disorder but increases tension.`;
-    } else if (lower.includes("space") || lower.includes("satellite") || lower.includes("missile")) {
-      reply = `${name}: Space status: satellites=${this.state.space.satellites}, missileDefense=${this.state.space.missileDefense}, missions=${this.state.space.missions.length}.`;
-    } else if (order === "move") {
-      reply = `${name}: Move order accepted. Units are moving toward (${Math.floor(parsed.targetX)}, ${Math.floor(parsed.targetY)}).`;
-    } else if (order === "talk") {
-      reply = `${name}: We can talk and we can take orders. Current status: food=${Math.floor(this.state.inventory.food)}, raiders=${raiders}, approval=${Math.floor(this.state.government.approval)}%, missions=${this.state.space.missions.length}.`;
-    } else {
-      reply = `${name}: Order accepted: "${text}". We are executing it as a priority operation for the next 120s.`;
-    }
-
-    this.pushNpcMessage(name, reply);
-  }
-
-  findNearestEnemy(x, y, r = 999) { let best = null, bd = r; this.state.enemies.forEach((e) => { const d = Math.hypot(e.x - x, e.y - y); if (d < bd) { bd = d; best = e; } }); return best; }
-  findNearestAnimal(x, y, r = 999) { let best = null, bd = r; this.state.animals.forEach((a) => { if (a.harvestCooldownMs > 0) return; const d = Math.hypot(a.x - x, a.y - y); if (d < bd) { bd = d; best = a; } }); return best; }
-  findNearestBuilding(x, y, types, includeBlocked = false) {
-    let best = null, bd = Infinity;
-    this.state.buildings.forEach((b) => {
-      if (types && !types.includes(b.type)) return;
-      if (!includeBlocked && b.entranceBlocked) return;
-      const d = Math.hypot(b.x - x, b.y - y);
-      if (d < bd) { bd = d; best = b; }
-    });
-    return best;
-  }
-  updateBuildingEntranceLocks() {
-    // Entrance state is manual-only: changed by Block/Unblock buttons or explicit commands.
-    this.state.buildings.forEach((b) => {
-      if (typeof b.entranceBlocked !== "boolean") b.entranceBlocked = false;
-    });
-  }
-  harvestAnimal(animal, by = "Villager") {
-    if (!animal || animal.harvestCooldownMs > 0) return;
-    const mul = this.weatherHarvestMul();
-    const foodGain = Math.max(1, Math.round(animal.yieldFood * mul));
-    const clothGain = Math.max(1, Math.round(animal.yieldCloth * (mul > 1 ? 1.05 : 0.95)));
-    this.state.inventory.food += foodGain;
-    this.state.inventory.clothing += clothGain;
-    animal.harvestCooldownMs = 10000 + Math.random() * 6000;
-    animal.x = Math.random() * WORLD_W; animal.y = Math.random() * WORLD_H;
-    this.createExplosion(animal.x, animal.y, 0.75, "220,205,170");
-  }
-  harvestNearestAnimal() { const a = this.findNearestAnimal(this.state.player.x, this.state.player.y, 2.5); if (!a) return; this.harvestAnimal(a, "You"); this.log(`Harvested ${a.type}: +${a.yieldFood} food, +${a.yieldCloth} clothing.`); }
-  chopNearestTree() {
-    let best = null, bd = 2.2;
-    const px = this.state.player.x, py = this.state.player.y;
-    for (let oy = -2; oy <= 2; oy += 1) {
-      for (let ox = -2; ox <= 2; ox += 1) {
-        const tx = px + ox, ty = py + oy;
-        const t = this.getTileRefAt(tx, ty);
-        if (!t || (t.type !== "forest" && t.type !== "fruit")) continue;
-        const d = Math.hypot(tx - px, ty - py);
-        if (d < bd) { bd = d; best = { tile: t, x: tx, y: ty }; }
-      }
-    }
-    if (!best) { this.pushNpcMessage("Builder", "No tree close enough to chop."); return; }
-    const fruit = best.tile.type === "fruit";
-    best.tile.type = "land";
-    best.tile.regrow = 45000 + Math.random() * 45000;
-    this.state.inventory.wood += fruit ? 1 : 2;
-    this.state.inventory.seeds += 1;
-    if (fruit) this.state.inventory.food += 1;
-    this.createExplosion(best.x, best.y, 0.55, "110,190,90");
-    this.log(`Tree chopped: +${fruit ? 1 : 2} wood, +1 seed${fruit ? ", +1 food" : ""}.`);
-  }
-  plantSeedNearPlayer() {
-    if ((this.state.inventory.seeds || 0) <= 0) { this.pushNpcMessage("Builder", "No seeds available to plant."); return; }
-    let spot = null, bestD = Infinity;
-    const px = this.state.player.x, py = this.state.player.y;
-    for (let oy = -2; oy <= 2; oy += 1) {
-      for (let ox = -2; ox <= 2; ox += 1) {
-        const tx = px + ox, ty = py + oy;
-        const t = this.getTileRefAt(tx, ty);
-        if (!t) continue;
-        if (["water", "river", "ocean", "ore"].includes(t.type)) continue;
-        if (t.type !== "land" && t.type !== "hill") continue;
-        const d = Math.hypot(tx - px, ty - py);
-        if (d < bestD) { bestD = d; spot = { tile: t, x: tx, y: ty }; }
-      }
-    }
-    if (!spot) { this.pushNpcMessage("Builder", "No valid land near you to plant seeds."); return; }
-    this.state.inventory.seeds -= 1;
-    spot.tile.type = Math.random() < 0.25 ? "fruit" : "forest";
-    spot.tile.regrow = 0;
-    this.createExplosion(spot.x, spot.y, 0.5, "120,220,110");
-    this.log(`Seed planted at (${Math.floor(spot.x)}, ${Math.floor(spot.y)}).`);
-  }
-
-  fireGun(from = "player", sx = this.state.player.x, sy = this.state.player.y, tx = null, ty = null) {
-    if (from === "player") { if (this.state.player.ammo <= 0) return; this.state.player.ammo -= 1; }
-    if (tx === null || ty === null) { const n = this.findNearestEnemy(sx, sy, 14); if (n) { tx = n.x; ty = n.y; } else { tx = sx + this.state.player.facingX * 3; ty = sy + this.state.player.facingY * 3; } }
-    const dx = tx - sx, dy = ty - sy, m = Math.hypot(dx, dy) || 1;
-    const b = { x: sx, y: sy, vx: (dx / m) * BULLET_SPEED, vy: (dy / m) * BULLET_SPEED, life: 1200, owner: from };
-    if (from === "enemy") this.state.enemyBullets.push(b); else if (from === "villager") this.state.friendlyBullets.push(b); else this.state.bullets.push(b);
-    this.createExplosion(sx, sy, 0.4, "255,210,110"); this.playShotSound();
-  }
-
-  spawnRaidWave() {
-    this.state.raid.active = true; this.state.raid.wave += 1;
-    const count = 7 + this.state.raid.wave, ang = Math.random() * Math.PI * 2, sx = this.state.player.x + Math.cos(ang) * (18 + Math.random() * 12), sy = this.state.player.y + Math.sin(ang) * (18 + Math.random() * 12);
-    const leader = { id: `lead-${Date.now()}`, name: "Raider Leader", x: sx + 0.5, y: sy + 0.5, hp: 14 + this.state.raid.wave, boss: false, leader: true, fireMs: 480 };
-    const boss = { id: `boss-${Date.now()}`, name: "Raider Boss", x: sx + 1, y: sy + 1, hp: 18 + this.state.raid.wave * 2, boss: true, fireMs: 500 };
-    const rs = Array.from({ length: Math.max(1, count - 1) }, (_, i) => ({ id: `r-${Date.now()}-${i}`, name: `Raider ${i + 1}`, x: sx + (Math.random() * 8 - 4), y: sy + (Math.random() * 8 - 4), hp: 4 + Math.floor(this.state.raid.wave * 0.4), boss: false, fireMs: 800 + Math.random() * 1200 }));
-    this.state.enemies.push(...rs, leader, boss);
-    this.spawnEnemySpy(sx, sy);
-    this.log("WARNING: Raiders invading with a leader, boss, and spy!");
-  }
-
-  screenToWorld(clientX, clientY) {
-    const rect = this.canvas.getBoundingClientRect();
-    const sx = (clientX - rect.left) * (this.canvas.width / Math.max(1, rect.width));
-    const sy = (clientY - rect.top) * (this.canvas.height / Math.max(1, rect.height));
-    const wx = this.state.player.x + (sx - this.canvas.width * 0.5) / TILE;
-    const wy = this.state.player.y + (sy - this.canvas.height * 0.5) / TILE;
-    return { x: ((wx % WORLD_W) + WORLD_W) % WORLD_W, y: ((wy % WORLD_H) + WORLD_H) % WORLD_H };
-  }
-  isFortBlockedAt(x, y, radius = 0.9) {
-    return this.state.buildings.some((b) => b.type === "fort" && Math.hypot(b.x - x, b.y - y) < radius);
-  }
-  moveEnemyWithFortCollision(enemy, dx, dy) {
-    const nx = enemy.x + dx;
-    const ny = enemy.y + dy;
-    if (!this.isFortBlockedAt(nx, ny)) {
-      enemy.x = nx;
-      enemy.y = ny;
-      return;
-    }
-    // Slide along fort walls before giving up movement entirely.
-    const tryX = enemy.x + dx;
-    const tryY = enemy.y + dy;
-    const canX = !this.isFortBlockedAt(tryX, enemy.y);
-    const canY = !this.isFortBlockedAt(enemy.x, tryY);
-    if (canX) enemy.x = tryX;
-    if (canY) enemy.y = tryY;
-    if (!canX && !canY) {
-      enemy.vx = -(enemy.vx || 0);
-      enemy.vy = -(enemy.vy || 0);
-    }
-  }
-  updatePlayer(dt) {
-    const speed = 0.01 * dt * this.weatherMoveMul(); let mx = 0, my = 0;
-    if (this.keys["w"] || this.keys["keyw"] || this.keys["arrowup"]) my -= 1;
-    if (this.keys["s"] || this.keys["keys"] || this.keys["arrowdown"]) my += 1;
-    if (this.keys["a"] || this.keys["keya"] || this.keys["arrowleft"]) mx -= 1;
-    if (this.keys["d"] || this.keys["keyd"] || this.keys["arrowright"]) mx += 1;
-    if (mx || my) {
-      const m = Math.hypot(mx, my) || 1;
-      this.state.player.facingX = mx / m; this.state.player.facingY = my / m; this.state.player.x += (mx / m) * speed; this.state.player.y += (my / m) * speed;
-      this.state.player.moveTarget = null;
-    } else if (this.state.player.moveTarget) {
-      const dx = this.state.player.moveTarget.x - this.state.player.x, dy = this.state.player.moveTarget.y - this.state.player.y;
-      const d = Math.hypot(dx, dy) || 0;
-      if (d <= speed || d < 0.2) {
-        this.state.player.x = this.state.player.moveTarget.x;
-        this.state.player.y = this.state.player.moveTarget.y;
-        this.state.player.moveTarget = null;
-      } else {
-        this.state.player.facingX = dx / d; this.state.player.facingY = dy / d;
-        this.state.player.x += (dx / d) * speed;
-        this.state.player.y += (dy / d) * speed;
-      }
-    }
-    this.state.player.x = ((this.state.player.x % WORLD_W) + WORLD_W) % WORLD_W; this.state.player.y = ((this.state.player.y % WORLD_H) + WORLD_H) % WORLD_H;
-  }
-
-  updateAnimals(dt) {
-    const moveMul = this.weatherMoveMul();
-    this.state.animals.forEach((a) => {
-      a.x += a.vx * dt * 0.0014 * moveMul; a.y += a.vy * dt * 0.0014 * moveMul;
-      if (Math.random() < 0.03) { a.vx = Math.random() * 2 - 1; a.vy = Math.random() * 2 - 1; }
-      a.x = ((a.x % WORLD_W) + WORLD_W) % WORLD_W; a.y = ((a.y % WORLD_H) + WORLD_H) % WORLD_H; a.harvestCooldownMs = Math.max(0, a.harvestCooldownMs - dt);
-    });
-  }
-  chooseState(v) { if (this.state.enemies.length > 0 && (v.role === "Guard" || Math.random() < 0.35)) return "fight"; if (this.state.inventory.food < this.state.villagers.length * 1.4) return "harvest"; if (v.role === "Trader") return "trade"; const r = Math.random(); if (r < 0.28) return "harvest"; if (r < 0.48) return "trade"; if (r < 0.74) return "work"; return "patrol"; }
-
-  updateVillagerAI(dt) {
-    const ms = 0.0028 * dt * this.weatherMoveMul();
-    const cmd = this.state.command?.ttlMs > 0 ? this.state.command : null;
-    const launchSite = this.state.space.launchAttractMs > 0 ? this.findNearestBuilding(this.state.player.x, this.state.player.y, ["space_center"]) : null;
-    this.state.villagers.forEach((v) => {
-      const targetMood = this.clamp(this.state.social.anger + this.state.government.taxRate * 0.72, 26, 0, 98);
-      v.mood = this.clamp(v.mood + (targetMood - v.mood) * 0.014 + (Math.random() * 0.8 - 0.4), v.mood, 0, 100);
-      v.brain.decisionMs -= dt; v.brain.workMs -= dt; if (!cmd && v.brain.decisionMs <= 0) { v.brain.state = this.chooseState(v); v.brain.decisionMs = 2500 + Math.random() * 5200; }
-      if (cmd) {
-        if (cmd.type === "move") v.brain.state = "move";
-        else if (["harvest","trade","fight","work","patrol"].includes(cmd.type)) v.brain.state = cmd.type;
-        else if (cmd.type === "custom") v.brain.state = v.role === "Trader" ? "trade" : "work";
-      }
-      if (this.state.enemies.length === 0 && v.mood > 82) v.brain.state = "protest";
-      // Very angry villagers will directly chase the player while taxes stay high.
-      if (v.mood > 86 && this.state.government.taxRate >= 18) v.brain.state = "angry_chase";
-      // Lowering taxes calms chase behavior immediately.
-      if (this.state.government.taxRate < 18 && v.brain.state === "angry_chase") {
-        v.brain.state = "patrol";
-        v.mood = Math.max(30, v.mood - 14);
-      }
-      if (launchSite && this.state.enemies.length === 0 && Math.random() < 0.2 && v.brain.state !== "angry_chase") v.brain.state = "spacewatch";
-      let t = null; if (v.brain.state === "move" && cmd) t = { x: cmd.targetX, y: cmd.targetY }; else if (v.brain.state === "fight") t = this.findNearestEnemy(v.x, v.y, 14); else if (v.brain.state === "harvest") t = this.findNearestAnimal(v.x, v.y, 18); else if (v.brain.state === "trade") t = this.findNearestBuilding(v.x, v.y, ["shop", "market", "government"]); else if (v.brain.state === "work") t = this.findNearestBuilding(v.x, v.y); else if (v.brain.state === "protest") t = this.findNearestBuilding(v.x, v.y, ["government"]); else if (v.brain.state === "angry_chase") t = this.state.player;
-      if (v.brain.state === "patrol" && v.homeId && !t) {
-        const parts = v.homeId.split(",");
-        const hx = Number(parts[0]), hy = Number(parts[1]);
-        if (!Number.isNaN(hx) && !Number.isNaN(hy)) t = { x: hx, y: hy };
-      }
-      if (v.brain.state === "spacewatch" && launchSite) t = launchSite;
-      if (t) { const dx = t.x - v.x, dy = t.y - v.y, d = Math.hypot(dx, dy) || 1; v.x += (dx / d) * ms; v.y += (dy / d) * ms; } else { v.x += v.vx * dt * 0.0016; v.y += v.vy * dt * 0.0016; if (Math.random() < 0.02) { v.vx = Math.random() * 2 - 1; v.vy = Math.random() * 2 - 1; } }
-      // Light-weight anti-crowding: repel from nearby random neighbors.
-      let rx = 0, ry = 0;
-      const sepChecks = Math.min(8, this.state.villagers.length);
-      for (let i = 0; i < sepChecks; i += 1) {
-        const n = this.state.villagers[(Math.random() * this.state.villagers.length) | 0];
-        if (!n || n === v) continue;
-        const dxn = v.x - n.x, dyn = v.y - n.y;
-        const d = Math.hypot(dxn, dyn) || 0.001;
-        if (d < 2.6) {
-          const w = (2.6 - d) / 2.6;
-          rx += (dxn / d) * w;
-          ry += (dyn / d) * w;
-        }
-      }
-      if (rx || ry) {
-        v.x += rx * dt * 0.0009;
-        v.y += ry * dt * 0.0009;
-      }
-      if (v.brain.state === "harvest" && v.brain.workMs <= 0) { const a = this.findNearestAnimal(v.x, v.y, 1.5); if (a) { this.harvestAnimal(a, v.name); v.coins += 1; v.brain.workMs = 1400 + Math.random() * 1800; } }
-      if (v.brain.state === "trade" && v.brain.workMs <= 0) { const s = this.findNearestBuilding(v.x, v.y, ["shop", "market", "government"]); if (s && Math.hypot(v.x - s.x, v.y - s.y) < 1.8) { if (this.state.inventory.food < this.state.villagers.length * 1.6 && v.coins >= 2) { this.state.inventory.food += 2; v.coins -= 2; } else if (this.state.inventory.food > this.state.villagers.length * 2.2) { this.state.inventory.food -= 1; v.coins += 1; } if (Math.random() < 0.25) this.state.player.coins += 1; v.brain.workMs = 2200 + Math.random() * 2600; } }
-      if (v.brain.state === "work" && v.brain.workMs <= 0) {
-        this.buildByVillager(v);
-        v.brain.workMs = 2400 + Math.random() * 3400;
-      }
-      if (v.brain.state === "protest" && v.brain.workMs <= 0) { const g = this.findNearestBuilding(v.x, v.y, ["government"]); if (g && Math.hypot(v.x - g.x, v.y - g.y) < 2.2) { this.state.government.approval = this.clamp(this.state.government.approval - 0.8, 65, 0, 100); this.state.social.anger = this.clamp(this.state.social.anger + 0.3, 18, 0, 100); if (Math.random() < 0.12) this.pushNpcMessage(v.name, `${v.name} protests at Government HQ: mood=${Math.floor(v.mood)} approval=${Math.floor(this.state.government.approval)}.`); v.brain.workMs = 2800 + Math.random() * 2200; } }
-      if (v.brain.state === "angry_chase" && v.brain.workMs <= 0) {
-        const dp = Math.hypot(v.x - this.state.player.x, v.y - this.state.player.y);
-        if (dp < 1.4) {
-          this.state.player.hp = Math.max(0, this.state.player.hp - 0.22);
-          if (Math.random() < 0.2) this.pushNpcMessage(v.name, `${v.name} is angry and chasing you over high taxes.`);
-        }
-        v.brain.workMs = 500 + Math.random() * 600;
-      }
-      if (v.brain.state === "fight" && v.brain.workMs <= 0) {
-        const captured = this.captureHostileNear(v.x, v.y, 1.6, v.name, true);
-        if (!captured) {
-          const e = this.findNearestEnemy(v.x, v.y, 7);
-          if (e) this.fireGun("villager", v.x, v.y, e.x, e.y);
-        } else if (Math.random() < 0.18) this.pushNpcMessage(v.name, `${v.name} captured a hostile and sent them to jail.`);
-        v.brain.workMs = 700 + Math.random() * 800;
-      }
-      v.x = ((v.x % WORLD_W) + WORLD_W) % WORLD_W; v.y = ((v.y % WORLD_H) + WORLD_H) % WORLD_H;
-    });
-  }
-
-  updateEnemies(dt) {
-    const SEE_RANGE = 13;
-    const ALERT_MS = 5000;
-    const leaders = this.state.enemies.filter((x) => x.leader && x.hp > 0);
-    this.state.enemies.forEach((e) => {
-      if (typeof e.vx !== "number") e.vx = Math.random() * 2 - 1;
-      if (typeof e.vy !== "number") e.vy = Math.random() * 2 - 1;
-      if (typeof e.alertMs !== "number") e.alertMs = 0;
-      const dx = this.state.player.x - e.x, dy = this.state.player.y - e.y, d = Math.hypot(dx, dy) || 1;
-      const seesPlayer = d < SEE_RANGE;
-      if (seesPlayer) e.alertMs = ALERT_MS;
-      else e.alertMs = Math.max(0, e.alertMs - dt);
-
-      const nearLeader = !e.leader && leaders.some((l) => Math.hypot(l.x - e.x, l.y - e.y) < 8);
-      const speedMul = e.boss ? 1.2 : e.leader ? 1.15 : nearLeader ? 1.1 : 1.0;
-      if (e.alertMs > 0) {
-        this.moveEnemyWithFortCollision(e, (dx / d) * dt * 0.0016 * speedMul, (dy / d) * dt * 0.0016 * speedMul);
-      } else {
-        this.moveEnemyWithFortCollision(e, e.vx * dt * 0.0010, e.vy * dt * 0.0010);
-        if (Math.random() < 0.02) { e.vx = Math.random() * 2 - 1; e.vy = Math.random() * 2 - 1; }
-      }
-
-      if (e.alertMs > 0 && d < 1.0) this.state.player.hp = Math.max(0, this.state.player.hp - (e.boss ? 0.035 : 0.016) * dt * 0.1);
-      e.fireMs -= dt;
-      if (e.alertMs > 0 && e.fireMs <= 0 && d < 12) { this.fireGun("enemy", e.x, e.y, this.state.player.x, this.state.player.y); e.fireMs = e.boss ? 420 + Math.random() * 380 : e.leader ? 540 + Math.random() * 420 : 700 + Math.random() * 950; }
-      e.x = ((e.x % WORLD_W) + WORLD_W) % WORLD_W; e.y = ((e.y % WORLD_H) + WORLD_H) % WORLD_H;
-    });
-  }
-  updateEnemySpies(dt) {
-    this.state.enemySpies.forEach((s) => {
-      if (typeof s.vx !== "number") s.vx = Math.random() * 2 - 1;
-      if (typeof s.vy !== "number") s.vy = Math.random() * 2 - 1;
-      if (typeof s.cooldownMs !== "number") s.cooldownMs = 0;
-      if (typeof s.seenMs !== "number") s.seenMs = 0;
-      s.cooldownMs = Math.max(0, s.cooldownMs - dt);
-
-      const dxp = this.state.player.x - s.x, dyp = this.state.player.y - s.y;
-      const dp = Math.hypot(dxp, dyp) || 1;
-      if (dp < 7.5) s.seenMs = 5000;
-      else s.seenMs = Math.max(0, s.seenMs - dt);
-
-      const target = this.findNearestBuilding(s.x, s.y, ["government", "factory", "shop", "fort"]);
-      if (s.seenMs > 0) {
-        s.x += (dxp / dp) * dt * 0.0014;
-        s.y += (dyp / dp) * dt * 0.0014;
-      } else if (target && Math.random() < 0.85) {
-        const dxt = target.x - s.x, dyt = target.y - s.y, dtg = Math.hypot(dxt, dyt) || 1;
-        s.x += (dxt / dtg) * dt * 0.0011;
-        s.y += (dyt / dtg) * dt * 0.0011;
-        if (dtg < 1.7 && s.cooldownMs <= 0) {
-          this.state.market.stock.ammo = Math.max(0, this.state.market.stock.ammo - 3);
-          this.state.inventory.metal = Math.max(0, this.state.inventory.metal - 1);
-          this.state.social.anger = this.clamp(this.state.social.anger + 0.4, 18, 0, 100);
-          this.pushNpcMessage("Counterintelligence", `Enemy spy sabotaged ${target.type}. Ammo stock reduced.`);
-          s.cooldownMs = 12000;
-        }
-      } else {
-        s.x += s.vx * dt * 0.0009;
-        s.y += s.vy * dt * 0.0009;
-        if (Math.random() < 0.03) { s.vx = Math.random() * 2 - 1; s.vy = Math.random() * 2 - 1; }
-      }
-
-      if (dp < 1.2 && s.cooldownMs <= 0) {
-        const stolenCoins = Math.min(10, Math.floor(this.state.player.coins));
-        const stolenAmmo = Math.min(2, Math.floor(this.state.player.ammo));
-        if (stolenCoins > 0) this.state.player.coins -= stolenCoins;
-        if (stolenAmmo > 0) this.state.player.ammo -= stolenAmmo;
-        this.pushNpcMessage("Counterintelligence", `Enemy spy stole ${stolenCoins} coins and ${stolenAmmo} ammo.`);
-        s.cooldownMs = 10000;
-      }
-
-      s.x = ((s.x % WORLD_W) + WORLD_W) % WORLD_W;
-      s.y = ((s.y % WORLD_H) + WORLD_H) % WORLD_H;
-    });
-  }
-
-  updateBullets(dt) {
-    const step = (arr) => { arr.forEach((b) => { b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt; }); return arr.filter((b) => b.life > 0); };
-    this.state.bullets = step(this.state.bullets); this.state.friendlyBullets = step(this.state.friendlyBullets); this.state.enemyBullets = step(this.state.enemyBullets);
-    const hit = (arr, dmg) => { arr.forEach((b) => { this.state.enemies.forEach((e) => { if (e.hp <= 0) return; if (Math.hypot(b.x - e.x, b.y - e.y) < 0.7) { e.hp -= dmg; b.life = 0; this.createExplosion(e.x, e.y, e.boss ? 1.3 : 0.95, e.boss ? "255,80,60" : "255,140,60"); if (e.hp <= 0 && e.boss) this.playExplosionSound(); } }); }); };
-    const hitSpies = (arr, dmg) => { arr.forEach((b) => { this.state.enemySpies.forEach((s) => { if (s.hp <= 0) return; if (Math.hypot(b.x - s.x, b.y - s.y) < 0.65) { s.hp -= dmg; b.life = 0; this.createExplosion(s.x, s.y, 0.85, "190,90,255"); } }); }); };
-    hit(this.state.bullets, 2.4); hit(this.state.friendlyBullets, 1.1);
-    hitSpies(this.state.bullets, 2.2); hitSpies(this.state.friendlyBullets, 1.0);
-    this.state.enemyBullets.forEach((b) => { if (Math.hypot(b.x - this.state.player.x, b.y - this.state.player.y) < 0.8) { b.life = 0; this.state.player.hp = Math.max(0, this.state.player.hp - 0.55); this.createExplosion(this.state.player.x, this.state.player.y, 0.9, "255,110,90"); } });
-    this.state.enemies = this.state.enemies.filter((e) => e.hp > 0); if (this.state.enemies.length === 0) this.state.raid.active = false;
-    this.state.enemySpies = this.state.enemySpies.filter((s) => s.hp > 0);
-    this.state.explosions.forEach((e) => { e.life -= dt; }); this.state.explosions = this.state.explosions.filter((e) => e.life > 0);
-  }
-
-  updateMessages(dt) {
-    // Strict mode: villagers respond only to player messages.
-    this.messageMs += dt;
-  }
-
-  update(dt) {
-    // Short day cycle: each in-game day now advances quickly.
-    this.worldTimeMs += dt; if (this.worldTimeMs > 45000) { this.worldTimeMs = 0; this.state.day += 1; this.growPopulationForNewDay(); }
-    this.updateWeather(dt);
-    this.housingTickMs += dt;
-    if (this.housingTickMs > 8000) { this.housingTickMs = 0; this.updateHousing(); }
-    this.updateBuildingEntranceLocks();
-    if (this.state.command?.ttlMs > 0) {
-      this.state.command.ttlMs = Math.max(0, this.state.command.ttlMs - dt);
-      if (this.state.command.ttlMs === 0) this.state.command.type = "none";
-    }
-    this.raiderWaveMs += dt; if (this.raiderWaveMs >= RAIDER_WAVE_MS) { this.raiderWaveMs = 0; this.spawnRaidWave(); }
-    this.updatePlayer(dt); this.updateAnimals(dt); this.updateShips(dt); this.updateVillagerAI(dt); this.updateEnemies(dt); this.updateEnemySpies(dt); this.updateBullets(dt); this.updateJails(dt); this.updateSupplyAndWar(dt); this.updateRivalCivilizations(dt); this.updateRivalPeople(dt); this.updateSpaceAndMissiles(dt); this.updateGovernment(dt); this.updateMessages(dt); this.updateHighScore(); this.updateHud();
-  }
-
-  tileColor(t) {
-    if (t === "ocean") return "#1d4f84";
-    if (t === "river") return "#2f8fce";
-    if (t === "water") return "#2f78b8";
-    if (t === "forest") return "#2f7c3f";
-    if (t === "fruit") return "#4d9444";
-    if (t === "hill") return "#8f7a54";
-    if (t === "ore") return "#6b6f7a";
-    return "#4c8b42";
-  }
-  drawMap() {
-    if (!this.mapCtx || !this.mapCanvas) return;
-    const c = this.mapCtx, w = this.mapCanvas.width, h = this.mapCanvas.height, sx = w / WORLD_W, sy = h / WORLD_H;
-    c.clearRect(0, 0, w, h);
-
-    for (let y = 0; y < WORLD_H; y += 1) {
-      for (let x = 0; x < WORLD_W; x += 1) {
-        c.fillStyle = this.tileColor(this.state.world[y][x].type);
-        c.fillRect(x * sx, y * sy, sx + 1, sy + 1);
-      }
-    }
-
-    const cellsX = 40, cellsY = 30;
-    const grid = Array.from({ length: cellsY }, () => Array(cellsX).fill(0));
-    this.state.villagers.forEach((v) => {
-      const gx = Math.max(0, Math.min(cellsX - 1, Math.floor((v.x / WORLD_W) * cellsX)));
-      const gy = Math.max(0, Math.min(cellsY - 1, Math.floor((v.y / WORLD_H) * cellsY)));
-      grid[gy][gx] += 1;
-    });
-    let maxPop = 0;
-    for (let gy = 0; gy < cellsY; gy += 1) for (let gx = 0; gx < cellsX; gx += 1) maxPop = Math.max(maxPop, grid[gy][gx]);
-    if (maxPop > 0) {
-      const cw = w / cellsX, ch = h / cellsY;
-      for (let gy = 0; gy < cellsY; gy += 1) {
-        for (let gx = 0; gx < cellsX; gx += 1) {
-          const p = grid[gy][gx];
-          if (p <= 0) continue;
-          const t = p / maxPop;
-          const alpha = 0.12 + t * 0.5;
-          c.fillStyle = `rgba(255, 70, 70, ${alpha.toFixed(3)})`;
-          c.fillRect(gx * cw, gy * ch, cw, ch);
-        }
-      }
-    }
-
-    c.fillStyle = "#ff3d3d";
-    c.fillRect(this.state.player.x * sx - 2, this.state.player.y * sy - 2, 4, 4);
-    this.state.enemies.forEach((e) => {
-      c.fillStyle = e.boss ? "#ff00aa" : e.leader ? "#ffd24a" : "#ff6b6b";
-      c.fillRect(e.x * sx - 1.5, e.y * sy - 1.5, 3, 3);
-    });
-    this.state.enemySpies.forEach((s) => {
-      c.fillStyle = "#b687ff";
-      c.fillRect(s.x * sx - 1.2, s.y * sy - 1.2, 2.4, 2.4);
-    });
-    this.state.rival.civilizations.forEach((civ) => {
-      c.fillStyle = civ.color || "#ff9b3d";
-      c.fillRect(civ.x * sx - 3, civ.y * sy - 3, 6, 6);
-    });
-    this.state.rival.people.forEach((p) => {
-      c.fillStyle = "#ffb04d";
-      c.fillRect(p.x * sx - 1, p.y * sy - 1, 2, 2);
-    });
-
-    c.fillStyle = "rgba(0,0,0,0.55)";
-    c.fillRect(8, 8, 300, 50);
-    c.fillStyle = "#fff";
-    c.font = "12px Trebuchet MS";
-    c.fillText("Population Map (red = higher density)", 14, 22);
-    c.fillText(`Villagers: ${this.state.villagers.length}`, 14, 36);
-    c.fillText(`Rival capitals: ${this.state.rival.civilizations.length} | Rival people: ${this.state.rival.people.length}`, 14, 50);
-    c.fillText(`Raiders: ${this.state.enemies.length} (red=raider, yellow=leader, pink=boss)`, 14, 64);
-    c.fillText(`Enemy spies: ${this.state.enemySpies.length} (purple)`, 14, 78);
-  }
-  drawEntity(x, y, top, body, label, cam, cw, ch) { const cx = cam.x * TILE - cw / 2, cy = cam.y * TILE - ch / 2, px = x * TILE - cx, py = y * TILE - cy; this.ctx.fillStyle = body; this.ctx.fillRect(px + 5, py + 10, 14, 12); this.ctx.fillStyle = top; this.ctx.fillRect(px + 4, py + 2, 16, 10); this.ctx.fillStyle = "#eaf2ff"; this.ctx.font = "11px Trebuchet MS"; this.ctx.fillText(label, px - 4, py - 2); }
-  drawAnimal(a, cam, cw, ch) { const cx = cam.x * TILE - cw / 2, cy = cam.y * TILE - ch / 2, px = a.x * TILE - cx, py = a.y * TILE - cy; const c = a.type === "cow" ? "#8d5e3b" : a.type === "sheep" ? "#d7dbe2" : a.type === "goat" ? "#bca687" : "#8f6f4f"; this.ctx.fillStyle = c; this.ctx.fillRect(px + 2, py + 10, 14, 8); this.ctx.fillStyle = "#f3f5fa"; this.ctx.fillRect(px + 11, py + 7, 7, 6); this.ctx.fillStyle = "#111"; this.ctx.fillRect(px + 13, py + 9, 1.5, 1.5); }
-  drawBoat(b, cam, cw, ch) {
-    const cx = cam.x * TILE - cw / 2, cy = cam.y * TILE - ch / 2, px = b.x * TILE - cx, py = b.y * TILE - cy;
-    const hull = b.type === "defense" ? "#6b3f1e" : b.type === "trading" ? "#5f421f" : b.type === "transport" ? "#664a2a" : "#87502a";
-    const flag = b.type === "defense" ? "#ff6b6b" : b.type === "trading" ? "#ffe28a" : b.type === "transport" ? "#b8f58f" : "#7de3ff";
-    this.ctx.fillStyle = "rgba(0,0,0,0.25)"; this.ctx.fillRect(px - 2, py + 16, 18, 3);
-    this.ctx.fillStyle = hull; this.ctx.fillRect(px - 3, py + 9, 18, 8);
-    this.ctx.fillStyle = "#f2f2f2"; this.ctx.fillRect(px + 5, py - 1, 2, 8);
-    this.ctx.fillStyle = flag; this.ctx.beginPath(); this.ctx.moveTo(px + 7, py - 1); this.ctx.lineTo(px + 13, py + 3); this.ctx.lineTo(px + 7, py + 7); this.ctx.closePath(); this.ctx.fill();
-  }
-  drawFlag(x, y, f, cam, cw, ch, s = 1) { const cx = cam.x * TILE - cw / 2, cy = cam.y * TILE - ch / 2, px = x * TILE - cx, py = y * TILE - cy; this.ctx.fillStyle = "#f6f6f6"; this.ctx.fillRect(px + 22, py - 20 * s, 2.2, 24 * s); this.ctx.fillStyle = "#111"; this.ctx.fillRect(px + 24, py - 20 * s, 20 * s, 11 * s); this.ctx.fillStyle = f?.color || "#2c7be5"; this.ctx.fillRect(px + 25, py - 19 * s, 18 * s, 9 * s); this.ctx.fillStyle = "#fff"; this.ctx.font = `${Math.max(9, Math.floor(8 * s))}px Trebuchet MS`; this.ctx.fillText((f?.symbol || "SC").slice(0, 2).toUpperCase(), px + 28, py - 12 * s); }
-  drawAstronaut(a, cam, cw, ch) {
-    const cx = cam.x * TILE - cw / 2, cy = cam.y * TILE - ch / 2, px = a.x * TILE - cx, py = a.y * TILE - cy;
-    this.ctx.fillStyle = "#f4f8ff";
-    this.ctx.fillRect(px + 5, py + 10, 13, 12);
-    this.ctx.fillStyle = "#87b8ff";
-    this.ctx.fillRect(px + 4, py + 2, 15, 9);
-    this.ctx.fillStyle = "#e9f4ff";
-    this.ctx.fillRect(px + 7, py + 5, 8, 4);
-    this.ctx.fillStyle = "#ffffff";
-    this.ctx.font = "11px Trebuchet MS";
-    this.ctx.fillText(`Astronaut ${a.phase}`, px - 10, py - 2);
-  }
-  drawRocket(r, cam, cw, ch) {
-    const cx = cam.x * TILE - cw / 2, cy = cam.y * TILE - ch / 2, px = r.x * TILE - cx, py = r.y * TILE - cy;
-    this.ctx.fillStyle = "#f6f6f6";
-    this.ctx.fillRect(px + 7, py + 2, 8, 20);
-    this.ctx.fillStyle = "#ff6b6b";
-    this.ctx.fillRect(px + 8, py, 6, 4);
-    this.ctx.fillStyle = "#7ec8ff";
-    this.ctx.fillRect(px + 9, py + 7, 4, 5);
-    if (r.phase === "launch") {
-      this.ctx.fillStyle = "rgba(255,180,80,0.9)";
-      this.ctx.fillRect(px + 9, py + 22, 4, 6);
-    }
-  }
-
-  render() {
-    const c = this.ctx, cw = this.canvas.width, ch = this.canvas.height; c.clearRect(0, 0, cw, ch);
-    const cam = { x: this.state.player.x, y: this.state.player.y }, r = 22, cx = cam.x * TILE - cw / 2, cy = cam.y * TILE - ch / 2;
-    for (let y = Math.floor(cam.y - r); y < Math.floor(cam.y + r); y += 1) for (let x = Math.floor(cam.x - r); x < Math.floor(cam.x + r); x += 1) { const t = this.getTileAt(x, y), px = x * TILE - cx, py = y * TILE - cy; c.fillStyle = this.tileColor(t.type); c.fillRect(px, py, TILE, TILE); c.strokeStyle = "rgba(0,0,0,0.15)"; c.strokeRect(px, py, TILE, TILE); }
-    if (this.state.weather.type === "Rain" || this.state.weather.type === "Storm") {
-      const drops = this.state.weather.type === "Storm" ? 220 : 140;
-      c.strokeStyle = this.state.weather.type === "Storm" ? "rgba(180,220,255,0.32)" : "rgba(180,220,255,0.24)";
-      c.lineWidth = 1;
-      for (let i = 0; i < drops; i += 1) {
-        const rx = (i * 73 + this.worldTimeMs * 0.45) % cw;
-        const ry = (i * 41 + this.worldTimeMs * 0.9) % ch;
-        c.beginPath();
-        c.moveTo(rx, ry);
-        c.lineTo(rx - 3, ry + 8);
-        c.stroke();
-      }
-    }
-    if (this.state.weather.type === "Snow") {
-      c.fillStyle = "rgba(240,248,255,0.45)";
-      for (let i = 0; i < 120; i += 1) {
-        const sx = (i * 61 + this.worldTimeMs * 0.12) % cw;
-        const sy = (i * 37 + this.worldTimeMs * 0.25) % ch;
-        c.fillRect(sx, sy, 2, 2);
-      }
-    }
-    if (this.state.weather.type === "Storm") {
-      c.fillStyle = "rgba(40,40,55,0.18)";
-      c.fillRect(0, 0, cw, ch);
-      if ((this.worldTimeMs % 2600) < 120) {
-        c.fillStyle = "rgba(230,240,255,0.16)";
-        c.fillRect(0, 0, cw, ch);
-      }
-    }
-    if (this.state.raid.active) { c.fillStyle = "rgba(180,0,0,0.16)"; c.fillRect(0, 0, cw, ch); }
-    this.state.buildings.forEach((b) => {
-      this.drawEntity(b.x, b.y, "#c8ad7f", "#8f6f44", b.type, cam, cw, ch);
-      if (b.entranceBlocked) {
-        const px = b.x * TILE - cx, py = b.y * TILE - cy;
-        c.fillStyle = "#ff5858";
-        c.fillRect(px + 6, py + 21, 13, 3);
-        c.fillStyle = "#1b0e0e";
-        c.fillRect(px + 6, py + 18, 3, 3);
-        c.fillRect(px + 16, py + 18, 3, 3);
-      }
-    });
-    this.state.rival.civilizations.forEach((civ) => {
-      this.drawEntity(civ.x, civ.y, civ.color, "#2a1d1d", civ.name, cam, cw, ch);
-      this.drawFlag(civ.x, civ.y, { color: civ.color, symbol: civ.name.slice(0, 2).toUpperCase() }, cam, cw, ch, 1.25);
-    });
-    this.state.rival.people.forEach((p) => {
-      const civ = this.state.rival.civilizations.find((x) => x.id === p.civId);
-      const top = civ?.color || "#e38b3d";
-      this.drawEntity(p.x, p.y, top, "#3a2a1d", p.name, cam, cw, ch);
-    });
-    this.state.navy.fishingBoats.forEach((b) => this.drawBoat(b, cam, cw, ch));
-    this.state.navy.defenseBoats.forEach((b) => this.drawBoat(b, cam, cw, ch));
-    this.state.navy.tradingShips.forEach((b) => this.drawBoat(b, cam, cw, ch));
-    this.state.navy.transportShips.forEach((b) => this.drawBoat(b, cam, cw, ch));
-    if (this.state.space.rocket?.active) this.drawRocket(this.state.space.rocket, cam, cw, ch);
-    if (this.state.space.astronaut?.active) this.drawAstronaut(this.state.space.astronaut, cam, cw, ch);
-    this.state.animals.forEach((a) => this.drawAnimal(a, cam, cw, ch));
-    this.state.villagers.forEach((v) => { const top = (v.mood || 0) > 82 ? "#ff6b6b" : v.role === "Trader" ? "#f0ad4e" : v.role === "Guard" ? "#78a8ff" : "#66d98f"; this.drawEntity(v.x, v.y, top, "#2a2a2a", v.name, cam, cw, ch); });
-    this.state.enemies.forEach((e) => {
-      const top = e.boss ? "#8d1c1c" : e.leader ? "#f4b942" : "#df5757";
-      const body = e.boss ? "#3f0e0e" : e.leader ? "#6c4e12" : "#631f1f";
-      this.drawEntity(e.x, e.y, top, body, e.name, cam, cw, ch);
-      this.drawFlag(e.x, e.y, this.state.flags.raider, cam, cw, ch, e.boss ? 1.5 : e.leader ? 1.35 : 1.2);
-    });
-    this.state.enemySpies.forEach((s) => this.drawEntity(s.x, s.y, "#b687ff", "#3a245f", s.name, cam, cw, ch));
-    this.drawEntity(this.state.player.x, this.state.player.y, "#78d1ff", "#244861", "Player", cam, cw, ch); this.drawFlag(this.state.player.x, this.state.player.y, this.state.flags.player, cam, cw, ch, 1.6);
-    c.fillStyle = "#ffd447"; this.state.bullets.forEach((b) => { c.fillRect(b.x * TILE - cx + 8, b.y * TILE - cy + 10, 6, 3); });
-    c.fillStyle = "#8bff8b"; this.state.friendlyBullets.forEach((b) => { c.fillRect(b.x * TILE - cx + 8, b.y * TILE - cy + 10, 6, 3); });
-    c.fillStyle = "#ff8e8e"; this.state.enemyBullets.forEach((b) => { c.fillRect(b.x * TILE - cx + 8, b.y * TILE - cy + 10, 6, 3); });
-    this.state.explosions.forEach((e) => { const px = e.x * TILE - cx + 12, py = e.y * TILE - cy + 12, t = e.life / e.maxLife, rad = (8 + 12 * (1 - t)) * e.size; c.fillStyle = `rgba(${e.color},${Math.max(0.1, t).toFixed(3)})`; c.beginPath(); c.arc(px, py, rad, 0, Math.PI * 2); c.fill(); c.fillStyle = `rgba(255,230,170,${Math.max(0.06, t * 0.7).toFixed(3)})`; c.beginPath(); c.arc(px, py, rad * 0.5, 0, Math.PI * 2); c.fill(); });
-    c.fillStyle = "rgba(0,0,0,0.35)"; c.fillRect(0, 0, cw, 28); c.fillStyle = "#fff"; c.font = "14px Trebuchet MS"; c.fillText(`Day ${this.state.day} | ${this.state.weather.type} ${this.state.weather.tempC}C | Next Raid ${Math.max(0, Math.ceil((RAIDER_WAVE_MS - this.raiderWaveMs) / 1000))}s`, 10, 19);
-    if (this.state.space.launchAttractMs > 0 && this.state.space.astronaut?.active) {
-      c.fillStyle = "rgba(16,20,36,0.72)";
-      c.fillRect(cw - 330, 6, 322, 22);
-      c.fillStyle = "#cde8ff";
-      c.font = "13px Trebuchet MS";
-      c.fillText(`Launch Event Live: ${Math.ceil(this.state.space.launchAttractMs / 1000)}s`, cw - 320, 21);
-    }
-  }
-
-  updateHud() {
-    const e = (id) => document.getElementById(id);
-    const setText = (id, v) => { const el = e(id); if (el) el.textContent = v; };
-    const setHtml = (id, v) => { const el = e(id); if (el) el.innerHTML = v; };
-    setText("healthText", `${Math.round(this.state.player.hp)}/10`); setText("armorText", String(Math.floor(this.state.player.armor || 0))); setText("coinsText", String(Math.floor(this.state.player.coins || 0)));
-    const wars = this.state.diplomacy.factions.filter((f) => f.atWar).length;
-    setText("weatherText", `${this.state.weather.type} ${this.state.weather.tempC}C, ${this.state.weather.windKph}kph`); setText("governmentText", `${this.state.government.type} A:${Math.round(this.state.government.approval)}% T:${Math.floor(this.state.government.taxRate)}% L:${Math.floor(this.state.government.lawStrictness)} W:${wars}`);
-    if (this.raidWarningEl) this.raidWarningEl.style.display = this.state.raid.active ? "block" : "none";
-    const rivalWar = this.state.rival.civilizations.filter((c) => c.atWar).length;
-    const rivalPower = this.state.rival.civilizations.reduce((a, c) => a + Math.floor(c.military), 0);
-    setHtml("inventoryView", [`Wood: ${Math.floor(this.state.inventory.wood)}`, `Stone: ${Math.floor(this.state.inventory.stone)}`, `Food: ${Math.floor(this.state.inventory.food)}`, `Clothing: ${Math.floor(this.state.inventory.clothing)}`, `Metal: ${Math.floor(this.state.inventory.metal)}`, `Fuel: ${Math.floor(this.state.inventory.fuel)}`, `Seeds: ${Math.floor(this.state.inventory.seeds)}`, `Science: ${Math.floor(this.state.inventory.science)}`, `Ammo: ${Math.floor(this.state.player.ammo)}`, `Animals: ${this.state.animals.length}`, `Villagers: ${this.state.villagers.length}`, `Housed: ${this.state.villagers.filter((v) => !!v.homeId).length}`, `Blocked Entrances: ${this.state.buildings.filter((b) => b.entranceBlocked).length}`, `Jailers: ${this.state.villagers.filter((v) => v.role === "Guard" || v.brain?.state === "patrol" || v.brain?.state === "fight").length}`, `Prisoners: ${this.state.prison?.prisoners?.length || 0} | Captured Total: ${this.state.prison?.capturedTotal || 0}`, `Angry Villagers: ${this.state.villagers.filter((v) => (v.mood || 0) > 80).length}`, `Raiders: ${this.state.enemies.length}`, `Enemy Leaders: ${this.state.enemies.filter((x) => x.leader).length}`, `Enemy Spies: ${this.state.enemySpies.length}`, `Rival Civs: ${this.state.rival.civilizations.length} | Rival People: ${this.state.rival.people.length} | At War: ${rivalWar} | Rival Military: ${rivalPower}`, `Ships F/D/T/Tr: ${this.state.navy.fishingBoats.length}/${this.state.navy.defenseBoats.length}/${this.state.navy.tradingShips.length}/${this.state.navy.transportShips.length}`, `Satellites: ${this.state.space.satellites} | MissileDef: ${this.state.space.missileDefense}`, `Moon Bases: ${this.state.space.moonBases} | Colonies: ${this.state.space.colonies}`, `Space Missions: ${this.state.space.missions.length} | Explored: ${this.state.space.explored.length}`, `Astronaut: ${this.state.space.astronaut?.active ? `${this.state.space.astronaut.phase} (${this.state.space.astronaut.mission || "mission"})` : "Idle"}`, `Launch Attraction: ${Math.ceil((this.state.space.launchAttractMs || 0) / 1000)}s`, `High Score: ${this.highScore.score} (Day ${this.highScore.day}, Pop ${this.highScore.population}, Coins ${this.highScore.coins})`, `Anger: ${Math.floor(this.state.social.anger)}%`, `Bullets: ${this.state.bullets.length + this.state.friendlyBullets.length + this.state.enemyBullets.length}`].join("<br>"));
-    setHtml("messageHistory", this.state.comms.slice(-10).map((m) => `<div><b>${m.from}:</b> ${m.text}</div>`).join(""));
-    setHtml("statusFeed", this.logs.slice(-10).map((l) => `<div>${l}</div>`).join(""));
-    setHtml("shopStock", `Food: ${Math.floor(this.state.market.stock.food)} @${this.state.market.prices.food.toFixed(1)}<br>Seeds: ${Math.floor(this.state.market.stock.seeds)} @${this.state.market.prices.seeds.toFixed(1)}<br>Fuel: ${Math.floor(this.state.market.stock.fuel)} @${this.state.market.prices.fuel.toFixed(1)}<br>Ammo: ${Math.floor(this.state.market.stock.ammo)} @${this.state.market.prices.ammo.toFixed(1)}`);
-  }
-
-  renderFatal(err) {
-    const c = this.ctx, cw = this.canvas.width, ch = this.canvas.height;
-    c.clearRect(0, 0, cw, ch);
-    c.fillStyle = "#0f1117"; c.fillRect(0, 0, cw, ch);
-    c.fillStyle = "#ff6f6f"; c.font = "bold 18px Trebuchet MS";
-    c.fillText("Runtime Error", 20, 36);
-    c.fillStyle = "#f2f6ff"; c.font = "14px Trebuchet MS";
-    c.fillText(String(err?.message || err || "Unknown error"), 20, 64);
-    c.fillText("Click Reset in the UI or hard refresh (Ctrl+F5).", 20, 88);
-  }
   loop(ts) {
     if (!this.lastTs) this.lastTs = ts;
-    const dt = Math.min(50, ts - this.lastTs);
+    const dt = Math.min(48, ts - this.lastTs);
     this.lastTs = ts;
     try {
       this.update(dt);
       this.render();
     } catch (err) {
-      console.error(err);
       this.renderFatal(err);
       return;
     }
-    requestAnimationFrame((t) => this.loop(t));
+    requestAnimationFrame((next) => this.loop(next));
+  }
+
+  update(dt) {
+    const dtS = dt / 1000;
+    this.ambientMs += dt;
+
+    this.ensurePopulation();
+    this.updatePlayer(dtS);
+    this.updateCameraPoint(dtS);
+    this.updatePeople(dtS);
+    this.updateAnimals(dtS, dt);
+    this.updateZombies(dtS, dt);
+    this.ensurePopulation();
+    this.updateBurning(dt);
+    this.updateExplosions(dt);
+    this.updateWeather(dt);
+    this.updateImports(dt);
+
+    this.checkPortalTravel();
+    this.checkEntityTnt();
+    this.handlePlayerDefeat();
+    this.state.player.hp = this.clamp(this.state.player.hp, 10, 0, 10);
+
+    this.messageMs = Math.max(0, this.messageMs - dt);
+    this.syncUi();
+    this.save();
+  }
+
+  damagePlayer(amount, cause = "") {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    this.state.player.hp -= amount;
+    if (cause) this.lastDamageCause = cause;
+  }
+
+  handlePlayerDefeat() {
+    if ((this.state.player?.hp || 0) > 0) return false;
+
+    const spawn = this.findFreshSpawn({
+      seed: this.state.seed,
+      salt: (this.state.portalTravelCount || 0) + (this.getRecentSpawnList(this.state.seed).length || 0) + 9,
+      preferredBiome: this.state.worldSpawn?.biome || "",
+      anchorX: this.state.worldSpawn?.x,
+      anchorY: this.state.worldSpawn?.y,
+      minRadius: 12,
+      maxRadius: 96
+    }) || this.state.worldSpawn || this.findFreshSpawn({ seed: this.state.seed, salt: 19, minRadius: 12 });
+    this.state.player.hp = 10;
+    this.state.player.x = spawn.x;
+    this.state.player.y = spawn.y;
+    this.state.player.z = this.getTopSolidZ(Math.floor(spawn.x), Math.floor(spawn.y)) + 1;
+    this.state.player.velX = 0;
+    this.state.player.velY = 0;
+    this.state.player.velZ = 0;
+    this.state.player.flyMode = false;
+    this.jumpQueued = false;
+    this.resetCameraPoint();
+    this.state.worldSpawn = {
+      x: spawn.x,
+      y: spawn.y,
+      z: this.state.player.z,
+      biome: spawn.biome || this.biomeAt(Math.floor(spawn.x), Math.floor(spawn.y))
+    };
+    this.rememberSpawnPoint(spawn, this.state.seed);
+
+    if (this.lastDamageCause === "zombie") this.say("A zombie knocked you out. You respawned.");
+    else if (this.lastDamageCause === "blast") this.say("A blast knocked you out. You respawned.");
+    else this.say("You blacked out and respawned.");
+
+    this.lastDamageCause = "";
+    return true;
+  }
+
+  updateWeather(dt) {
+    this.state.weather.timerMs -= dt;
+    if (this.state.weather.timerMs > 0) return;
+    const prev = this.state.weather.type;
+    this.state.weather = this.createWeatherState(this.state.seed + Math.floor(this.ambientMs / 1000));
+    if (this.state.weather.type !== prev) {
+      this.say(`Weather changed: ${this.getWeatherLabel(this.state.weather.type)}.`);
+    }
+  }
+
+  updateImports(dt) {
+    this.state.importTimerMs -= dt;
+    if (this.state.importTimerMs > 0) return;
+
+    while (this.state.importTimerMs <= 0) {
+      this.state.importTimerMs += 60000;
+      const profile = this.getWorldProfile(this.state.seed);
+      const workers = Math.max(1, Math.floor(this.state.people.length / 8));
+      this.state.imported.wood += workers;
+      this.state.imported.stone += 1 + workers + (profile.mountainBias > 0.2 ? 1 : 0);
+      this.state.imported.metal += profile.ore === "metal_ore" ? 2 : 1;
+      if (this.state.worldIndex >= 2 && this.hash01(this.state.seed + this.ambientMs * 0.001) > 0.76) {
+        this.state.imported.tnt += 1;
+      }
+    }
+
+    this.say("New imports arrived.");
+  }
+
+  updatePlayer(dtS) {
+    const p = this.state.player;
+    p.flyMode = false;
+    const inWater = this.isPlayerInWater();
+    const sprinting = Boolean(this.keys["shift"] && !inWater);
+    const speed = inWater ? PLAYER_SWIM_SPEED : (sprinting ? PLAYER_SPRINT_SPEED : PLAYER_RUN_SPEED);
+    const currentGround = this.getTopSolidZ(Math.floor(p.x), Math.floor(p.y)) + 1;
+    const onGroundNow = !inWater && p.z <= currentGround + GROUND_CONTACT_EPS;
+    if (onGroundNow) {
+      p.z = currentGround;
+      if (p.velZ < 0) p.velZ = 0;
+    }
+    if (this.keys["q"]) p.facing -= 1.8 * dtS;
+    if (this.keys["e"]) p.facing += 1.8 * dtS;
+    if (this.keys["r"]) p.pitch = Math.min(1.0, p.pitch + 1.3 * dtS);
+    if (this.keys["f"]) p.pitch = Math.max(-1.15, p.pitch - 1.3 * dtS);
+    const f = { x: Math.cos(p.facing), y: Math.sin(p.facing) };
+    const r = { x: -f.y, y: f.x };
+
+    let mx = 0;
+    let my = 0;
+    if (this.keys["w"] || this.keys["arrowup"]) {
+      mx += f.x;
+      my += f.y;
+    }
+    if (this.keys["s"] || this.keys["arrowdown"]) {
+      mx -= f.x;
+      my -= f.y;
+    }
+    if (this.keys["a"] || this.keys["arrowleft"]) {
+      mx -= r.x;
+      my -= r.y;
+    }
+    if (this.keys["d"] || this.keys["arrowright"]) {
+      mx += r.x;
+      my += r.y;
+    }
+
+    const len = Math.hypot(mx, my);
+    const inputX = len > 0 ? (mx / len) : 0;
+    const inputY = len > 0 ? (my / len) : 0;
+    if (onGroundNow && !inWater) {
+      const drag = Math.exp(-PLAYER_GROUND_DRAG * dtS);
+      p.velX *= drag;
+      p.velY *= drag;
+      if (len > 0) {
+        p.velX += inputX * PLAYER_GROUND_ACCEL * dtS;
+        p.velY += inputY * PLAYER_GROUND_ACCEL * dtS;
+      }
+    } else if (inWater) {
+      const drag = Math.exp(-PLAYER_SWIM_DRAG * dtS);
+      p.velX *= drag;
+      p.velY *= drag;
+      if (len > 0) {
+        p.velX += inputX * PLAYER_SWIM_ACCEL * dtS;
+        p.velY += inputY * PLAYER_SWIM_ACCEL * dtS;
+      }
+    } else {
+      const drag = Math.exp(-PLAYER_AIR_DRAG * dtS);
+      p.velX *= drag;
+      p.velY *= drag;
+      if (len > 0) {
+        p.velX += inputX * PLAYER_AIR_ACCEL * dtS;
+        p.velY += inputY * PLAYER_AIR_ACCEL * dtS;
+      }
+    }
+    const maxHorizontalSpeed = onGroundNow && !inWater
+      ? speed
+      : (inWater ? speed : speed * 1.08);
+    const horizontalSpeed = Math.hypot(p.velX, p.velY);
+    if (horizontalSpeed > maxHorizontalSpeed) {
+      const scale = maxHorizontalSpeed / horizontalSpeed;
+      p.velX *= scale;
+      p.velY *= scale;
+    }
+    if (Math.abs(p.velX) < 0.01) p.velX = 0;
+    if (Math.abs(p.velY) < 0.01) p.velY = 0;
+    const moveResult = this.tryMovePlayer(p.velX * dtS, p.velY * dtS);
+    if (!moveResult.movedX) p.velX = 0;
+    if (!moveResult.movedY) p.velY = 0;
+
+    const gx = Math.floor(p.x);
+    const gy = Math.floor(p.y);
+    const ground = this.getTopSolidZ(gx, gy) + 1;
+    const waterTop = this.getWaterTopZ(gx, gy) + 0.92;
+    const risePressed = this.keys["space"];
+    const divePressed = this.keys["control"];
+
+    if (inWater) {
+      const swimLift = risePressed ? 17.5 : 0;
+      const swimDive = divePressed ? 14 : 0;
+      p.velZ += (swimLift - swimDive - 0.55) * dtS;
+      p.velZ *= 0.972;
+      p.z += p.velZ * dtS;
+      if (p.z < ground) {
+        p.z = ground;
+        p.velZ = 0;
+      }
+      if (p.z > waterTop + 0.55 && !risePressed) {
+        p.z = waterTop + 0.55;
+        p.velZ = Math.min(0, p.velZ);
+      }
+    } else {
+      const onGround = p.z <= ground + GROUND_CONTACT_EPS;
+      if (onGround) {
+        p.z = ground;
+        if (p.velZ < 0) p.velZ = 0;
+      }
+      if (onGround && this.jumpQueued) {
+        p.velZ = PLAYER_JUMP_SPEED;
+        this.jumpQueued = false;
+      }
+      if (!risePressed && p.velZ > 0) {
+        p.velZ -= 16 * dtS;
+      }
+      p.velZ -= 34 * dtS;
+      p.velZ = Math.max(-28, Math.min(18, p.velZ));
+      p.z += p.velZ * dtS;
+      if (p.z < ground) {
+        p.z = ground;
+        p.velZ = 0;
+      }
+    }
+    if (!this.keys["space"] && !inWater) this.jumpQueued = false;
+  }
+
+  tryMovePlayer(stepX, stepY) {
+    const p = this.state.player;
+    let movedX = false;
+    let movedY = false;
+    const tryAxis = (nx, ny) => {
+      const gx = Math.floor(nx);
+      const gy = Math.floor(ny);
+      const nextGround = this.getTopSolidZ(gx, gy) + 1;
+      if (nextGround - p.z > STEP_HEIGHT && !this.isPlayerInWater()) return false;
+      if (this.isSolid(this.getBlock(gx, gy, Math.floor(nextGround + 1))) || this.isSolid(this.getBlock(gx, gy, Math.floor(nextGround + 2)))) return false;
+      p.x = nx;
+      p.y = ny;
+      if (!this.isPlayerInWater() && nextGround > p.z) p.z = nextGround;
+      return true;
+    };
+    if (tryAxis(p.x + stepX, p.y)) movedX = true;
+    else stepX = 0;
+    if (tryAxis(p.x, p.y + stepY)) movedY = true;
+    return { movedX, movedY };
+  }
+
+  moveWalker(entity, stepX, stepY, stepHeight = STEP_HEIGHT) {
+    const tryAxis = (nx, ny) => {
+      const gx = Math.floor(nx);
+      const gy = Math.floor(ny);
+      const nextGround = this.getTopSolidZ(gx, gy) + 1;
+      const feet = Math.max(nextGround, entity.z || nextGround);
+      if (nextGround - (entity.z || nextGround) > stepHeight) return false;
+      if (this.isSolid(this.getBlock(gx, gy, Math.floor(feet + 1))) || this.isSolid(this.getBlock(gx, gy, Math.floor(feet + 2)))) return false;
+      entity.x = nx;
+      entity.y = ny;
+      entity.z = nextGround;
+      return true;
+    };
+    if (!tryAxis(entity.x + stepX, entity.y)) stepX = 0;
+    tryAxis(entity.x, entity.y + stepY);
+  }
+
+  updatePeople(dtS) {
+    const seed = this.state.seed;
+    this.ensurePopulation();
+    this.ensureMerchants();
+    this.state.people.forEach((person, i) => {
+      const nearestZombie = this.findNearestZombie(person.x, person.y, 7);
+      if (this.isMerchant(person)) {
+        this.updateMerchantPerson(person, nearestZombie, dtS, seed, i);
+        return;
+      }
+      person.turnMs -= dtS;
+      let desiredDir = person.dir;
+      if (person.turnMs <= 0) {
+        const n = this.hash01(seed + i * 33 + Math.floor(this.ambientMs / 500));
+        desiredDir = n * Math.PI * 2;
+        person.turnMs = 1.2 + this.hash01(seed + i * 17 + Math.floor(this.ambientMs / 700)) * 2.8;
+      }
+      if (nearestZombie) {
+        desiredDir = Math.atan2(person.y - nearestZombie.y, person.x - nearestZombie.x);
+      }
+      person.dir = this.angleStep(person.dir, desiredDir, dtS * (nearestZombie ? 4.2 : 2.8));
+
+      const drift = nearestZombie ? 2.25 : 1.05;
+      this.moveWalker(person, Math.cos(person.dir) * drift * dtS, Math.sin(person.dir) * drift * dtS, 1.05);
+      person.walkCycle = (person.walkCycle || 0) + drift * dtS * 7.2;
+
+      const dx = person.x - person.homeX;
+      const dy = person.y - person.homeY;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 7.5) {
+        this.moveWalker(person, -(dx / dist) * 1.8 * dtS, -(dy / dist) * 1.8 * dtS, 1.05);
+      }
+
+      person.z = this.getTopSolidZ(Math.floor(person.x), Math.floor(person.y)) + 1;
+      person.actionMs -= dtS;
+      if (person.actionMs <= 0) {
+        this.performPersonAction(person);
+        person.actionMs = 0.8 + Math.random() * 2.2;
+      }
+    });
+  }
+
+  updateMerchantPerson(person, nearestZombie, dtS, seed, i) {
+    const stall = person.stall || {
+      x: person.homeX,
+      y: person.homeY,
+      z: this.getTopSolidZ(Math.floor(person.homeX), Math.floor(person.homeY)) + 1,
+      clerkX: person.homeX,
+      clerkY: person.homeY
+    };
+    person.turnMs -= dtS;
+    if (person.turnMs <= 0) {
+      person.turnMs = 0.8 + this.hash01(seed + i * 17 + Math.floor(this.ambientMs / 800)) * 1.6;
+      person.dir = this.hash01(seed + i * 33 + Math.floor(this.ambientMs / 600)) * Math.PI * 2;
+    }
+
+    if (nearestZombie) {
+      const fleeDir = Math.atan2(person.y - nearestZombie.y, person.x - nearestZombie.x);
+      person.dir = this.angleStep(person.dir, fleeDir, dtS * 4.8);
+      this.moveWalker(person, Math.cos(person.dir) * 2.6 * dtS, Math.sin(person.dir) * 2.6 * dtS, 1.05);
+      person.walkCycle = (person.walkCycle || 0) + 2.6 * dtS * 7.4;
+    } else {
+      const blend = Math.min(1, dtS * 3.8);
+      person.x += (stall.clerkX - person.x) * blend;
+      person.y += (stall.clerkY - person.y) * blend;
+      person.walkCycle = (person.walkCycle || 0) + Math.hypot(stall.clerkX - person.x, stall.clerkY - person.y) * dtS * 1.2;
+      const playerDx = this.state.player.x - person.x;
+      const playerDy = this.state.player.y - person.y;
+      if (Math.hypot(playerDx, playerDy) < 6.5) {
+        person.dir = Math.atan2(playerDy, playerDx);
+      }
+    }
+
+    const dx = person.x - stall.x;
+    const dy = person.y - stall.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 3.4) {
+      person.x -= (dx / dist) * 2.2 * dtS;
+      person.y -= (dy / dist) * 2.2 * dtS;
+    }
+
+    person.z = this.getTopSolidZ(Math.floor(person.x), Math.floor(person.y)) + 1;
+    person.actionMs -= dtS;
+    if (person.actionMs <= 0) {
+      if (Math.hypot(this.state.player.x - person.x, this.state.player.y - person.y) > 7) {
+        person.shop.cursor = (person.shop.cursor + 1) % Math.max(1, person.shop.offers.length);
+      }
+      person.actionMs = 5 + this.hash01(seed + i * 59 + Math.floor(this.ambientMs / 1400)) * 6;
+    }
+  }
+
+  performPersonAction(person) {
+    if (this.isMerchant(person)) return;
+    const px = Math.floor(person.x);
+    const py = Math.floor(person.y);
+    if (Math.hypot(this.state.player.x - person.x, this.state.player.y - person.y) < 2.4) return;
+
+    const actionRoll = Math.random();
+    const digTarget = this.findPersonDigTarget(px, py);
+    if (digTarget && actionRoll < 0.18) {
+      const hit = digTarget;
+      if (!hit) return;
+      const terrain = this.terrainHeight(hit.x, hit.y);
+      if (hit.z >= terrain) return;
+      this.setBlock(hit.x, hit.y, hit.z, "air");
+      delete this.state.burning[this.key(hit.x, hit.y, hit.z)];
+      this.collectResourceForInventory(person.inventory, hit.type, person.resources);
+      if (hit.z < terrain - 2 && Math.random() < 0.14) {
+        this.spawnZombieAt(hit.x + (Math.random() - 0.5), hit.y + (Math.random() - 0.5));
+      }
+      return;
+    }
+
+    const buildType = this.pickPersonBuildBlock(person.inventory);
+    if (!buildType) return;
+    const tx = px + Math.floor(Math.random() * 3) - 1;
+    const ty = py + Math.floor(Math.random() * 3) - 1;
+    const placeZ = this.getTopSolidZ(tx, ty) + 1;
+    if (placeZ > MAX_Z) return;
+    if (this.isStallFootprintCell(tx, ty)) return;
+    if (this.isCellOccupied(tx, ty, placeZ)) return;
+    this.setBlock(tx, ty, placeZ, buildType);
+    person.inventory[buildType] -= 1;
+
+    if (buildType === "metal" && Math.random() < 0.08) {
+      const low = placeZ - 2;
+      if (
+        this.getBlock(tx, ty, low) === "metal" &&
+        this.getBlock(tx, ty, low + 1) === "metal" &&
+        this.getBlock(tx, ty, low + 2) === "metal"
+      ) {
+        this.ignite(tx, ty, low + 1);
+      }
+    }
+    if (buildType === "tnt" && Math.random() < 0.18) {
+      this.ignite(tx, ty, placeZ);
+    }
+  }
+
+  pickPersonBuildBlock(inv) {
+    const choices = [];
+    if ((inv.stone || 0) > 0) choices.push("stone", "stone");
+    if ((inv.wood || 0) > 0) choices.push("wood", "wood");
+    if ((inv.metal || 0) > 0) choices.push("metal");
+    if ((inv.tnt || 0) > 0) choices.push("tnt");
+    if (choices.length === 0) return "";
+    return choices[Math.floor(Math.random() * choices.length)];
+  }
+
+  isOreBlock(type) {
+    return type === "metal_ore" || type === "amber_ore" || type === "crystal_ore" || type === "sulfur_ore" || type === "pearl_ore";
+  }
+
+  findPersonDigTarget(cx, cy) {
+    let best = null;
+    let bestScore = -Infinity;
+    for (let x = cx - 2; x <= cx + 2; x += 1) {
+      for (let y = cy - 2; y <= cy + 2; y += 1) {
+        if (this.isStallFootprintCell(x, y)) continue;
+        const terrain = this.terrainHeight(x, y);
+        for (let z = terrain - 1; z >= Math.max(MIN_Z + 1, terrain - 4); z -= 1) {
+          const type = this.getBlock(x, y, z);
+          if (!this.isSolid(type) || type === "bedrock" || type === "portal") continue;
+          const dist = Math.hypot(x - cx, y - cy);
+          const score = (this.isOreBlock(type) ? 100 : type === "stone" ? 24 : type === "dirt" ? 12 : 16) - dist * 6 - (terrain - z);
+          if (score > bestScore) {
+            bestScore = score;
+            best = { x, y, z, type };
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  findTopDiggableAt(x, y) {
+    for (let z = MAX_Z; z >= MIN_Z; z -= 1) {
+      const t = this.getBlock(x, y, z);
+      if (!this.isSolid(t)) continue;
+      if (t === "bedrock" || t === "portal") return null;
+      return { x, y, z, type: t };
+    }
+    return null;
+  }
+
+  collectResourceForInventory(inv, type, resourceBag = null) {
+    if (type === "wood" || type === "leaves") inv.wood += 1;
+    else if (type === "stone" || type === "dirt" || type === "grass") inv.stone += 1;
+    else if (type === "metal") inv.metal += 1;
+    else if (type === "metal_ore") {
+      inv.metal += 1;
+      if (resourceBag) resourceBag.metal += 1;
+    }
+    else if (type === "tnt") inv.tnt += 1;
+    else if (type === "amber_ore") {
+      inv.stone += 1;
+      if (resourceBag) resourceBag.amber += 1;
+    } else if (type === "crystal_ore") {
+      inv.stone += 1;
+      if (resourceBag) resourceBag.crystal += 1;
+    } else if (type === "sulfur_ore") {
+      inv.stone += 1;
+      if (resourceBag) resourceBag.sulfur += 1;
+    } else if (type === "pearl_ore") {
+      inv.stone += 1;
+      if (resourceBag) resourceBag.pearl += 1;
+    }
+  }
+
+  isInPrivateZone(x, y) {
+    const cx = x + 0.5;
+    const cy = y + 0.5;
+    return this.state.people.some((person) => {
+      if (!this.isMerchant(person)) return false;
+      const radius = person.stall?.privateZoneRadius || 1.4;
+      return Math.hypot(cx - person.stall.x, cy - person.stall.y) <= radius;
+    });
+  }
+
+  isStallFootprintCell(x, y) {
+    return this.isInPrivateZone(x, y);
+  }
+
+  isCellOccupied(x, y, z) {
+    const near = (e) => Math.abs(Math.floor(e.x) - x) < 1 && Math.abs(Math.floor(e.y) - y) < 1 && Math.abs((e.z || 0) - z) < 1.2;
+    if (near(this.state.player)) return true;
+    if (this.state.people.some((p) => near(p))) return true;
+    if (this.state.animals.some((a) => near(a))) return true;
+    if (this.state.zombies.some((q) => near(q))) return true;
+    if (this.isInPrivateZone(x, y) && this.state.people.some((person) => this.isMerchant(person) && z <= person.stall.z + 2.1)) return true;
+    return false;
+  }
+
+  updateZombies(dtS, dt) {
+    const p = this.state.player;
+    const alive = [];
+    const profile = this.getWorldProfile(this.state.seed);
+
+    for (const z of this.state.zombies) {
+      const target = this.findNearestPersonOrPlayer(z.x, z.y, 18);
+      if (target) {
+        const dx = target.x - z.x;
+        const dy = target.y - z.y;
+        z.dir = this.angleStep(z.dir || 0, Math.atan2(dy, dx), dtS * 2.3);
+        const speed = 1.35;
+        this.moveWalker(z, Math.cos(z.dir) * speed * dtS, Math.sin(z.dir) * speed * dtS, 0.9);
+        z.walkCycle = (z.walkCycle || 0) + speed * dtS * 4.8;
+      } else {
+        z.turnMs -= dtS;
+        if (z.turnMs <= 0) {
+          z.turnMs = 0.9 + this.hash01(this.state.seed + z.x * 7 + z.y * 13 + this.ambientMs * 0.001) * 1.8;
+          const drift = (this.hash01(this.state.seed + z.x * 37 + z.y * 19 + this.ambientMs * 0.002) - 0.5) * 1.2;
+          z.dir += drift;
+        }
+        const shamble = 0.72;
+        this.moveWalker(z, Math.cos(z.dir || 0) * shamble * dtS, Math.sin(z.dir || 0) * shamble * dtS, 0.8);
+        z.walkCycle = (z.walkCycle || 0) + shamble * dtS * 4.1;
+      }
+
+      z.z = this.getTopSolidZ(Math.floor(z.x), Math.floor(z.y)) + 1;
+      z.lifeMs -= dt;
+      if (z.lifeMs <= 0) continue;
+
+      if (Math.hypot(z.x - p.x, z.y - p.y) < 0.9) {
+        this.damagePlayer(2.2 * dtS, "zombie");
+      }
+
+      for (let i = this.state.people.length - 1; i >= 0; i -= 1) {
+        const person = this.state.people[i];
+        if (Math.hypot(z.x - person.x, z.y - person.y) < 0.85) {
+          this.state.people.splice(i, 1);
+          this.say(`${person.name} was taken by a zombie.`);
+        }
+      }
+
+      alive.push(z);
+    }
+
+    this.state.zombies = alive;
+    this.state.zombieSpawnMs -= dt;
+    const targetCount = Math.max(8, Math.floor(8 + this.state.worldIndex * 1.5 * profile.zombieScale));
+    if (this.state.zombieSpawnMs <= 0 && this.state.zombies.length < targetCount) {
+      if (this.hash01(this.state.seed + this.ambientMs * 0.0023) > 0.45) {
+        this.spawnZombieInWorld(Math.floor(this.ambientMs / 1000));
+      } else {
+        const distance = 10 + this.hash01(this.state.seed + this.ambientMs * 0.002) * 8;
+        this.spawnZombieNearPlayer(distance);
+      }
+      this.state.zombieSpawnMs = Math.max(5000, 15000 / Math.max(0.7, profile.zombieScale)) + Math.floor(Math.random() * 7000);
+    }
+  }
+
+  updateBurning(dt) {
+    const updated = {};
+    const entries = Object.entries(this.state.burning);
+
+    for (const [key, burn] of entries) {
+      const next = { ...burn, ms: burn.ms - dt, spreadMs: burn.spreadMs - dt };
+      const { x, y, z } = this.parseKey(key);
+      const type = this.getBlock(x, y, z);
+
+      if (type === "tnt") {
+        this.explode(x, y, z, 3.4, true);
+        continue;
+      }
+
+      if (next.spreadMs <= 0) {
+        next.spreadMs = 800;
+        this.spreadFire(x, y, z);
+      }
+
+      if (next.ms <= 0) {
+        if (type === "wood" || type === "leaves" || type === "grass") {
+          this.setBlock(x, y, z, "air");
+        }
+        continue;
+      }
+
+      updated[key] = next;
+    }
+
+    this.state.burning = updated;
+  }
+
+  updateExplosions(dt) {
+    this.state.explosions = this.state.explosions
+      .map((fx) => ({ ...fx, ms: fx.ms - dt }))
+      .filter((fx) => fx.ms > 0);
+  }
+
+  spreadFire(x, y, z) {
+    const neighbors = [
+      [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0],
+      [0, 0, 1], [0, 0, -1]
+    ];
+
+    for (const [dx, dy, dz] of neighbors) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const nz = z + dz;
+      const t = this.getBlock(nx, ny, nz);
+      if (t === "wood" || t === "leaves" || t === "tnt") {
+        if (Math.random() < 0.36) this.ignite(nx, ny, nz);
+      }
+    }
+  }
+
+  hasPlacementSupport(x, y, z) {
+    for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, -1], [0, 0, 1]]) {
+      const neighbor = this.getBlock(x + dx, y + dy, z + dz);
+      if (this.isSolid(neighbor)) return true;
+    }
+    return false;
+  }
+
+  doesBlockOverlapPlayer(x, y, z) {
+    const p = this.state.player;
+    const playerMinX = p.x - 0.28;
+    const playerMaxX = p.x + 0.28;
+    const playerMinY = p.y - 0.28;
+    const playerMaxY = p.y + 0.28;
+    const playerMinZ = p.z;
+    const playerMaxZ = p.z + 1.72;
+    return (
+      playerMinX < x + 1 &&
+      playerMaxX > x &&
+      playerMinY < y + 1 &&
+      playerMaxY > y &&
+      playerMinZ < z + 1 &&
+      playerMaxZ > z
+    );
+  }
+
+  placeOrUseSelected() {
+    const sel = this.state.selectedBlock;
+    const hit = this.raycastTarget();
+    if (!hit) return;
+
+    if (sel === "destroy") {
+      this.destroyTargetBlock();
+      return;
+    }
+
+    if (sel === "fire") {
+      this.ignite(hit.x, hit.y, hit.z);
+      this.tryCreatePortal(hit.x, hit.y, hit.z);
+      return;
+    }
+
+    if ((this.state.inventory[sel] || 0) <= 0) {
+      this.say(`No ${sel} left in inventory.`);
+      return;
+    }
+
+    const place = hit.place;
+    if (!place) return;
+    if (!hit.type || !this.isRenderable(hit.type)) return;
+    if (place.z > MAX_Z || place.z <= MIN_Z) return;
+    if (this.doesBlockOverlapPlayer(place.x, place.y, place.z)) return;
+    if (this.isSolid(this.getBlock(place.x, place.y, place.z))) return;
+    if (!this.hasPlacementSupport(place.x, place.y, place.z)) {
+      this.say("Blocks need support. You cannot place them floating in air.");
+      return;
+    }
+
+    this.setBlock(place.x, place.y, place.z, sel);
+    this.state.inventory[sel] -= 1;
+
+    if (sel === "tnt") this.say("TNT placed. It explodes on touch or fire.");
+  }
+
+  destroyTargetBlock() {
+    const hit = this.raycastTarget();
+    if (!hit) return;
+
+    if (hit.type === "bedrock") return;
+
+    if (hit.type === "portal") {
+      this.say("Portal removed.");
+      this.setBlock(hit.x, hit.y, hit.z, "air");
+      return;
+    }
+
+    this.setBlock(hit.x, hit.y, hit.z, "air");
+    delete this.state.burning[this.key(hit.x, hit.y, hit.z)];
+    this.collectResource(hit.type);
+
+    const terrain = this.terrainHeight(hit.x, hit.y);
+    if (hit.z < terrain - 2 && Math.random() < 0.18) {
+      this.spawnZombieAt(hit.x + (Math.random() - 0.5), hit.y + (Math.random() - 0.5));
+      this.say("A zombie crawled out of the hole.");
+    }
+
+    if (hit.type === "tnt") this.explode(hit.x, hit.y, hit.z, 3.2, true);
+  }
+
+  collectResource(type) {
+    this.collectResourceForInventory(this.state.imported, type, this.state.resources);
+  }
+
+  ignite(x, y, z) {
+    const type = this.getBlock(x, y, z);
+    if (!this.isSolid(type)) return;
+
+    if (type === "tnt") {
+      this.explode(x, y, z, 3.8, true);
+      return;
+    }
+
+    this.state.burning[this.key(x, y, z)] = { ms: 5600, spreadMs: 700 };
+
+    if (this.tryCreatePortal(x, y, z)) {
+      this.say("Portal opened. Step into it.");
+    }
+  }
+
+  tryCreatePortal(x, y, z) {
+    for (let base = z - 2; base <= z; base += 1) {
+      if (
+        this.getBlock(x, y, base) === "metal" &&
+        this.getBlock(x, y, base + 1) === "metal" &&
+        this.getBlock(x, y, base + 2) === "metal"
+      ) {
+        this.setBlock(x, y, base, "portal");
+        this.setBlock(x, y, base + 1, "portal");
+        this.setBlock(x, y, base + 2, "portal");
+        delete this.state.burning[this.key(x, y, base)];
+        delete this.state.burning[this.key(x, y, base + 1)];
+        delete this.state.burning[this.key(x, y, base + 2)];
+        return true;
+      }
+    }
+    return false;
+  }
+
+  findTouchedPortal() {
+    const p = this.state.player;
+    const minX = p.x - 0.34;
+    const maxX = p.x + 0.34;
+    const minY = p.y - 0.34;
+    const maxY = p.y + 0.34;
+    const minZ = p.z + 0.02;
+    const maxZ = p.z + 1.76;
+
+    for (let x = Math.floor(minX); x <= Math.floor(maxX); x += 1) {
+      for (let y = Math.floor(minY); y <= Math.floor(maxY); y += 1) {
+        for (let z = Math.floor(minZ); z <= Math.floor(maxZ); z += 1) {
+          if (this.getBlock(x, y, z) !== "portal") continue;
+          return { x, y, z };
+        }
+      }
+    }
+    return null;
+  }
+
+  checkPortalTravel() {
+    const touchedPortal = this.findTouchedPortal();
+    if (touchedPortal) {
+      const entryBiome = this.biomeAt(touchedPortal.x, touchedPortal.y, this.terrainHeight(touchedPortal.x, touchedPortal.y));
+      this.startNewWorld(this.state.worldIndex + 1, entryBiome);
+    }
+  }
+
+  startNewWorld(index, entryBiome = "") {
+    const prevInventory = { ...this.state.inventory };
+    const prevResources = { ...this.state.resources };
+    const portalTravelCount = (this.state.portalTravelCount || 0) + 1;
+    const newSeed = Math.floor(Math.random() * 9999999) + index * 173;
+    const profile = this.getWorldProfile(newSeed);
+
+    this.state.worldIndex = index;
+    this.state.seed = newSeed;
+    this.state.worldName = `${profile.name}-${(newSeed % 9000) + 1000}`;
+    this.state.worldMods = {};
+    this.state.burning = {};
+    this.state.animals = [];
+    this.state.animalSerial = 0;
+    this.state.animalSpawnMs = 2000;
+    this.state.zombies = [];
+    this.state.zombieSpawnMs = 5000;
+    this.state.importTimerMs = 60000;
+    this.state.weather = this.createWeatherState(newSeed);
+    this.state.inventory = prevInventory;
+    this.state.resources = prevResources;
+    this.state.selectedBlock = this.state.selectedBlock || "wood";
+    this.state.portalTravelCount = portalTravelCount;
+
+    const candidateBiomes = ["grass", "sand", "snow"]
+      .sort((a, b) => {
+        const sa = (a !== entryBiome ? 10 : 0) + this.hash01(newSeed * 0.23 + portalTravelCount * 17 + a.length * 11);
+        const sb = (b !== entryBiome ? 10 : 0) + this.hash01(newSeed * 0.23 + portalTravelCount * 17 + b.length * 11);
+        return sb - sa;
+      });
+    let spawn = null;
+    for (const biome of candidateBiomes) {
+      spawn = this.findFreshSpawn({
+        seed: newSeed,
+        salt: portalTravelCount + biome.length,
+        preferredBiome: biome,
+        minRadius: 18 + Math.floor(this.hash01(newSeed * 0.61 + portalTravelCount * 29) * 44)
+      });
+      if (spawn && (!entryBiome || spawn.biome !== entryBiome)) break;
+    }
+    if (!spawn || (entryBiome && spawn.biome === entryBiome)) {
+      spawn = this.findFreshSpawn({
+        seed: newSeed,
+        salt: portalTravelCount + 23,
+        avoidBiome: entryBiome,
+        minRadius: 18 + Math.floor(this.hash01(newSeed * 0.61 + portalTravelCount * 29) * 44)
+      });
+    }
+    if (!spawn) spawn = this.findFreshSpawn({ seed: newSeed, salt: portalTravelCount + 31 });
+
+    this.state.player.x = spawn.x;
+    this.state.player.y = spawn.y;
+    this.state.player.z = this.getTopSolidZ(Math.floor(spawn.x), Math.floor(spawn.y)) + 1;
+    this.state.player.velX = 0;
+    this.state.player.velY = 0;
+    this.state.player.velZ = 0;
+    this.state.player.flyMode = false;
+    this.jumpQueued = false;
+    this.resetCameraPoint();
+    this.state.worldSpawn = {
+      x: spawn.x,
+      y: spawn.y,
+      z: this.state.player.z,
+      biome: spawn.biome || this.biomeAt(Math.floor(spawn.x), Math.floor(spawn.y))
+    };
+    this.rememberSpawnPoint(spawn, newSeed);
+
+    this.state.people = this.createPeople(newSeed, spawn);
+    this.seedWorldAnimals();
+    this.seedWorldZombies(Math.max(8, Math.floor(8 + this.state.worldIndex * 1.2)));
+    this.ensureMerchants();
+
+    this.say(`Portal warped you to the ${this.getBiomeLabel(this.state.worldSpawn.biome)} in ${profile.name}.`);
+  }
+
+  nextPersonId() {
+    const id = this.state.personSerial || 0;
+    this.state.personSerial = id + 1;
+    return `p-${this.state.seed}-${id}`;
+  }
+
+  nextZombieId() {
+    const id = this.state.zombieSerial || 0;
+    this.state.zombieSerial = id + 1;
+    return `z-${this.state.seed}-${id}`;
+  }
+
+  nextAnimalId() {
+    const id = this.state.animalSerial || 0;
+    this.state.animalSerial = id + 1;
+    return `a-${this.state.seed}-${id}`;
+  }
+
+  getHabitatAt(x, y) {
+    const top = this.getTopSolidZ(x, y);
+    const waterTop = this.getWaterTopZ(x, y);
+    if (waterTop > top + 0.35) return "ocean";
+    return this.biomeAt(x, y, this.terrainHeight(x, y));
+  }
+
+  getAnimalSpeciesDefinition(speciesId = "", habitat = "grass") {
+    const habitats = [habitat, "grass", "sand", "snow", "ocean"];
+    for (const key of habitats) {
+      const found = (ANIMAL_SPECIES[key] || []).find((entry) => entry.id === speciesId);
+      if (found) return { ...found, habitat: key };
+    }
+    const fallback = (ANIMAL_SPECIES[habitat] && ANIMAL_SPECIES[habitat][0]) || ANIMAL_SPECIES.grass[0];
+    return { ...fallback, habitat: habitat || "grass" };
+  }
+
+  getWildlifeTargetCount() {
+    const profile = this.getWorldProfile(this.state.seed);
+    return WILDLIFE_TARGET_BASE + Math.round(profile.oceanBias * 10) + Math.round(profile.mountainBias * 6);
+  }
+
+  getPreferredAnimalHabitat(slot = 0) {
+    const playerHabitat = this.getHabitatAt(Math.floor(this.state.player.x), Math.floor(this.state.player.y));
+    const cycle = [playerHabitat, playerHabitat, "grass", "sand", "snow", "ocean", ""];
+    return cycle[slot % cycle.length] || "";
+  }
+
+  findWildlifeSpawn(options = {}) {
+    const seed = typeof options.seed === "number" ? options.seed : (this.state.seed || 1);
+    const salt = options.salt || 0;
+    const preferredHabitat = options.preferredHabitat || "";
+    const anchorX = typeof options.anchorX === "number" ? options.anchorX : this.state.player.x;
+    const anchorY = typeof options.anchorY === "number" ? options.anchorY : this.state.player.y;
+    const minRadius = typeof options.minRadius === "number" ? options.minRadius : 8;
+    const maxRadius = typeof options.maxRadius === "number" ? options.maxRadius : 92;
+
+    for (let attempt = 0; attempt < 260; attempt += 1) {
+      const radius = minRadius + this.hash01(seed * 0.47 + salt * 5.9 + attempt * 1.7) * Math.max(8, maxRadius - minRadius);
+      const angle = this.hash01(seed * 0.79 + salt * 8.1 + attempt * 3.7) * Math.PI * 2;
+      const x = Math.round(anchorX + Math.cos(angle) * radius);
+      const y = Math.round(anchorY + Math.sin(angle) * radius);
+      if (this.isInPrivateZone(x, y)) continue;
+      const habitat = this.getHabitatAt(x, y);
+      if (preferredHabitat && habitat !== preferredHabitat) continue;
+      const tooCloseToPlayer = Math.hypot(x + 0.5 - this.state.player.x, y + 0.5 - this.state.player.y) < 4.2;
+      const nearAnimal = this.state.animals.some((animal) => Math.hypot(animal.x - (x + 0.5), animal.y - (y + 0.5)) < 2.1);
+      if (tooCloseToPlayer || nearAnimal) continue;
+
+      if (habitat === "ocean") {
+        const top = this.getTopSolidZ(x, y);
+        const waterTop = this.getWaterTopZ(x, y);
+        if (waterTop <= top + 1.35) continue;
+        return { x: x + 0.5, y: y + 0.5, z: Math.max(top + 0.75, waterTop - 0.85), habitat };
+      }
+
+      if (!this.isDrySurface(x, y)) continue;
+      const h = this.terrainHeight(x, y);
+      if (this.getTerrainSlope(x, y, h) > 1.9) continue;
+      if (this.isCellOccupied(x, y, h + 1)) continue;
+      return { x: x + 0.5, y: y + 0.5, z: this.getTopSolidZ(x, y) + 1, habitat };
+    }
+    return null;
+  }
+
+  spawnAnimalInWorld(salt = 0, preferredHabitat = "") {
+    const spot = this.findWildlifeSpawn({
+      seed: this.state.seed + 307,
+      salt: salt + this.state.animals.length * 11 + this.state.worldIndex * 17,
+      preferredHabitat
+    }) || (preferredHabitat ? this.findWildlifeSpawn({
+      seed: this.state.seed + 307,
+      salt: salt + this.state.animals.length * 11 + this.state.worldIndex * 17 + 41
+    }) : null);
+    if (!spot) return false;
+
+    const pool = ANIMAL_SPECIES[spot.habitat] || ANIMAL_SPECIES.grass;
+    const species = pool[Math.floor(this.hash01(this.state.seed * 0.91 + salt * 13.7 + this.state.animals.length * 7.3) * pool.length) % pool.length];
+    const speedScale = 0.88 + this.hash01(this.state.seed * 0.33 + salt * 5.1 + this.state.animals.length * 9.1) * 0.32;
+    const scale = species.scale * (0.92 + this.hash01(this.state.seed * 0.19 + salt * 7.7) * 0.2);
+    const z = spot.habitat === "ocean"
+      ? Math.max(this.getTopSolidZ(Math.floor(spot.x), Math.floor(spot.y)) + 0.75, this.getWaterTopZ(Math.floor(spot.x), Math.floor(spot.y)) - species.depthBias)
+      : spot.z;
+
+    this.state.animals.push({
+      id: this.nextAnimalId(),
+      x: spot.x,
+      y: spot.y,
+      z,
+      habitat: spot.habitat,
+      species: species.id,
+      label: species.label,
+      shape: species.shape,
+      palette: { ...species.palette },
+      scale,
+      speed: species.speed * speedScale,
+      depthBias: species.depthBias,
+      dir: this.hash01(this.state.seed * 0.53 + salt * 11.2 + this.state.animals.length * 13.4) * Math.PI * 2,
+      turnMs: 0.6 + this.hash01(this.state.seed * 0.61 + salt * 17.3 + this.state.animals.length * 7.9) * 2.5,
+      walkCycle: this.hash01(this.state.seed * 0.43 + salt * 19.7) * Math.PI * 2,
+      bobPhase: this.hash01(this.state.seed * 0.87 + salt * 23.1) * Math.PI * 2
+    });
+    return true;
+  }
+
+  seedWorldAnimals(count = this.getWildlifeTargetCount()) {
+    this.state.animals = [];
+    for (let i = 0; i < count; i += 1) {
+      this.spawnAnimalInWorld(i * 17 + count, this.getPreferredAnimalHabitat(i));
+    }
+    for (let i = this.state.animals.length; i < count; i += 1) {
+      if (!this.spawnAnimalInWorld(i * 29 + count + 7)) break;
+    }
+    this.state.animalSpawnMs = 2000;
+  }
+
+  updateAnimals(dtS, dt) {
+    const p = this.state.player;
+    const alive = [];
+
+    for (const animal of this.state.animals) {
+      if (!animal || typeof animal !== "object") continue;
+      if (Math.hypot(animal.x - p.x, animal.y - p.y) > 145) continue;
+
+      const gx = Math.floor(animal.x);
+      const gy = Math.floor(animal.y);
+      const habitatHere = this.getHabitatAt(gx, gy);
+      const nearestZombie = this.findNearestZombie(animal.x, animal.y, animal.habitat === "ocean" ? 5.8 : 6.8);
+      const fleeSource = nearestZombie || (Math.hypot(animal.x - p.x, animal.y - p.y) < 3.2 ? p : null);
+
+      animal.turnMs -= dtS;
+      if (animal.habitat === "ocean") {
+        if (habitatHere !== "ocean") continue;
+        if (fleeSource) {
+          animal.dir = this.angleStep(animal.dir || 0, Math.atan2(animal.y - fleeSource.y, animal.x - fleeSource.x), dtS * 4.8);
+        } else if (animal.turnMs <= 0) {
+          animal.turnMs = 0.7 + this.hash01(this.state.seed + animal.x * 13 + animal.y * 19 + this.ambientMs * 0.001) * 2.1;
+          animal.dir += (this.hash01(this.state.seed + animal.x * 29 + animal.y * 31 + this.ambientMs * 0.0007) - 0.5) * 1.9;
+        }
+        const swimSpeed = animal.speed * (fleeSource ? 1.55 : 1);
+        const nx = animal.x + Math.cos(animal.dir || 0) * swimSpeed * dtS;
+        const ny = animal.y + Math.sin(animal.dir || 0) * swimSpeed * dtS;
+        if (this.getHabitatAt(Math.floor(nx), Math.floor(ny)) === "ocean") {
+          animal.x = nx;
+          animal.y = ny;
+        } else {
+          animal.dir += Math.PI * 0.65;
+        }
+        const floorZ = this.getTopSolidZ(Math.floor(animal.x), Math.floor(animal.y));
+        const waterTop = this.getWaterTopZ(Math.floor(animal.x), Math.floor(animal.y));
+        const targetZ = Math.max(floorZ + 0.75, waterTop - (animal.depthBias || 0.9) + Math.sin(this.ambientMs * 0.003 + (animal.bobPhase || 0)) * 0.18);
+        animal.z += (targetZ - animal.z) * Math.min(1, dtS * 3.6);
+        animal.walkCycle = (animal.walkCycle || 0) + swimSpeed * dtS * 6.4;
+      } else {
+        if (habitatHere === "ocean") continue;
+        if (fleeSource) {
+          animal.dir = this.angleStep(animal.dir || 0, Math.atan2(animal.y - fleeSource.y, animal.x - fleeSource.x), dtS * 4.5);
+        } else if (animal.turnMs <= 0) {
+          animal.turnMs = 0.8 + this.hash01(this.state.seed + animal.x * 17 + animal.y * 23 + this.ambientMs * 0.001) * 2.6;
+          animal.dir += (this.hash01(this.state.seed + animal.x * 43 + animal.y * 41 + this.ambientMs * 0.0009) - 0.5) * 1.7;
+        }
+        const stride = animal.speed * (fleeSource ? 1.7 : 1);
+        this.moveWalker(animal, Math.cos(animal.dir || 0) * stride * dtS, Math.sin(animal.dir || 0) * stride * dtS, 0.9);
+        animal.z = this.getTopSolidZ(Math.floor(animal.x), Math.floor(animal.y)) + 1;
+        animal.walkCycle = (animal.walkCycle || 0) + stride * dtS * 5.2;
+      }
+
+      alive.push(animal);
+    }
+
+    this.state.animals = alive;
+    this.state.animalSpawnMs -= dt;
+    const target = this.getWildlifeTargetCount();
+    if (this.state.animalSpawnMs <= 0 && this.state.animals.length < target) {
+      const missing = Math.min(4, target - this.state.animals.length);
+      for (let i = 0; i < missing; i += 1) {
+        this.spawnAnimalInWorld(Math.floor(this.ambientMs / 1000) + i * 13, this.getPreferredAnimalHabitat(this.state.animals.length + i));
+      }
+      this.state.animalSpawnMs = 1600;
+    }
+  }
+
+  angleStep(from, to, maxStep) {
+    const diff = Math.atan2(Math.sin(to - from), Math.cos(to - from));
+    if (Math.abs(diff) <= maxStep) return to;
+    return from + Math.sign(diff) * maxStep;
+  }
+
+  createPersonRecord(seed, i, center, orbitScale = 1) {
+    const angle = (Math.PI * 2 * i) / PEOPLE_PER_WORLD;
+    const radius = (12 + (i % 5) * 3.2) * orbitScale;
+    const jitter = (this.hash01(seed + i * 97) - 0.5) * 2.2;
+    const x = center.x + Math.cos(angle) * (radius + jitter);
+    const y = center.y + Math.sin(angle) * (radius - jitter);
+    return {
+      id: this.nextPersonId(),
+      name: PERSON_NAMES[i % PERSON_NAMES.length],
+      x,
+      y,
+      z: this.getTopSolidZ(Math.floor(x), Math.floor(y)) + 1,
+      homeX: x,
+      homeY: y,
+      dir: this.hash01(seed + i * 11) * Math.PI * 2,
+      turnMs: 1 + this.hash01(seed + i * 19) * 2,
+      actionMs: 0.8 + this.hash01(seed + i * 47) * 2.1,
+      walkCycle: this.hash01(seed + i * 13) * Math.PI * 2,
+      inventory: {
+        wood: 2 + Math.floor(this.hash01(seed + i * 53) * 3),
+        stone: 2 + Math.floor(this.hash01(seed + i * 59) * 4),
+        metal: Math.floor(this.hash01(seed + i * 61) * 2),
+        tnt: this.hash01(seed + i * 67) > 0.93 ? 1 : 0
+      },
+      resources: { amber: 0, crystal: 0, metal: 0, sulfur: 0, pearl: 0 },
+      role: "villager"
+    };
+  }
+
+  ensurePopulation() {
+    if (!Array.isArray(this.state.people)) this.state.people = [];
+    while (this.state.people.length < PEOPLE_PER_WORLD) {
+      const idx = this.state.people.length;
+      const center = this.state.worldSpawn || this.findFreshSpawn({ seed: this.state.seed, salt: 41 });
+      const newcomer = this.createPersonRecord(this.state.seed + idx * 131 + Math.floor(this.ambientMs / 2000), idx, center, 0.55);
+      newcomer.homeX += (this.hash01(idx * 17 + this.state.seed) - 0.5) * 3;
+      newcomer.homeY += (this.hash01(idx * 29 + this.state.seed) - 0.5) * 3;
+      newcomer.x = newcomer.homeX;
+      newcomer.y = newcomer.homeY;
+      newcomer.z = this.getTopSolidZ(Math.floor(newcomer.x), Math.floor(newcomer.y)) + 1;
+      this.state.people.push(newcomer);
+    }
+    if (this.state.people.length > PEOPLE_PER_WORLD) this.state.people = this.state.people.slice(0, PEOPLE_PER_WORLD);
+  }
+
+  createPeople(seed, center = this.findFreshSpawn({ seed, salt: 41 })) {
+    const people = [];
+    for (let i = 0; i < PEOPLE_PER_WORLD; i += 1) {
+      people.push(this.createPersonRecord(seed, i, center));
+    }
+    return people;
+  }
+
+  spawnZombieNearPlayer(distance) {
+    const p = this.state.player;
+    const a = Math.random() * Math.PI * 2;
+    const x = p.x + Math.cos(a) * distance;
+    const y = p.y + Math.sin(a) * distance;
+    this.spawnZombieAt(x, y);
+  }
+
+  spawnZombieAt(x, y) {
+    const surfaceZ = this.getTopSolidZ(Math.floor(x), Math.floor(y)) + 1;
+    this.state.zombies.push({
+      id: this.nextZombieId(),
+      x,
+      y,
+      z: surfaceZ,
+      dir: this.hash01(this.state.seed + x * 11 + y * 17 + this.state.zombies.length * 31) * Math.PI * 2,
+      turnMs: 0.7 + this.hash01(this.state.seed + x * 41 + y * 13) * 1.8,
+      walkCycle: this.hash01(this.state.seed + x * 23 + y * 29) * Math.PI * 2,
+      lifeMs: 90000 + Math.random() * 90000
+    });
+  }
+
+  spawnZombieInWorld(salt = 0) {
+    const spot = this.findFreshSpawn({
+      seed: this.state.seed + 911,
+      salt: salt + this.state.zombies.length * 3 + this.state.worldIndex * 19,
+      minRadius: 8,
+      maxRadius: 120,
+      requireOpenArea: true
+    });
+    if (!spot) return;
+    this.spawnZombieAt(spot.x, spot.y);
+  }
+
+  seedWorldZombies(count = 8) {
+    this.state.zombies = [];
+    for (let i = 0; i < count; i += 1) {
+      this.spawnZombieInWorld(i * 11 + count);
+    }
+  }
+
+  getUndergroundZ(x, y) {
+    const terrain = this.terrainHeight(x, y);
+    return Math.max(MIN_Z + 1, terrain - 3);
+  }
+
+  getLandmassCenter(seed = (this.state?.seed || 1)) {
+    const range = 72;
+    return {
+      x: Math.round((this.hash01(seed * 0.111) * 2 - 1) * range),
+      y: Math.round((this.hash01(seed * 0.173) * 2 - 1) * range)
+    };
+  }
+
+  getSpawnAnchor(seed = (this.state?.seed || 1), salt = 0) {
+    const center = this.getLandmassCenter(seed);
+    const angle = this.hash01(seed * 0.147 + salt * 7.31) * Math.PI * 2;
+    const radius = 10 + this.hash01(seed * 0.293 + salt * 11.73) * 30;
+    return {
+      x: Math.round(center.x + Math.cos(angle) * radius),
+      y: Math.round(center.y + Math.sin(angle) * radius)
+    };
+  }
+
+  getRecentSpawnList(seed = null) {
+    if (!Array.isArray(this.state?.recentSpawns)) return [];
+    if (typeof seed !== "number") return this.state.recentSpawns;
+    return this.state.recentSpawns.filter((spot) => spot && spot.seed === seed);
+  }
+
+  rememberSpawnPoint(spawn, seed = (this.state?.seed || 1)) {
+    if (!this.state) return;
+    if (!Array.isArray(this.state.recentSpawns)) this.state.recentSpawns = [];
+    const entry = {
+      seed,
+      x: Number(spawn?.x) || 0,
+      y: Number(spawn?.y) || 0,
+      biome: spawn?.biome || this.biomeAt(Math.floor(spawn?.x || 0), Math.floor(spawn?.y || 0))
+    };
+    this.state.recentSpawns = [
+      entry,
+      ...this.state.recentSpawns.filter((spot) => !spot || spot.seed !== entry.seed || Math.hypot(spot.x - entry.x, spot.y - entry.y) > 8)
+    ].slice(0, 10);
+  }
+
+  isDrySurface(x, y) {
+    const gx = Math.floor(x);
+    const gy = Math.floor(y);
+    const top = this.getTopSolidZ(gx, gy);
+    if (top < SEA_LEVEL + 1) return false;
+    return this.getWaterTopZ(gx, gy) <= top;
+  }
+
+  isSpawnSpotSafe(x, y) {
+    const gx = Math.floor(x);
+    const gy = Math.floor(y);
+    const top = this.getTopSolidZ(gx, gy);
+    const feet = top + 1;
+    if (!this.isDrySurface(gx, gy)) return false;
+    if (this.isSolid(this.getBlock(gx, gy, feet)) || this.isSolid(this.getBlock(gx, gy, feet + 1)) || this.isSolid(this.getBlock(gx, gy, feet + 2))) return false;
+    if (this.getTerrainSlope(gx, gy, top) > 1.35) return false;
+
+    let blockedSides = 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = gx + dx;
+      const ny = gy + dy;
+      if (!this.isDrySurface(nx, ny)) return false;
+      if (
+        this.isSolid(this.getBlock(nx, ny, feet)) ||
+        this.isSolid(this.getBlock(nx, ny, feet + 1)) ||
+        this.getTopSolidZ(nx, ny) > feet + 1
+      ) {
+        blockedSides += 1;
+      }
+    }
+    return blockedSides <= 1;
+  }
+
+  repairSpawnStateIfNeeded() {
+    const spawn = this.state?.worldSpawn;
+    if (!spawn) return;
+    const player = this.state?.player;
+    const currentAtSpawn = Math.hypot((this.state.player?.x || 0) - spawn.x, (this.state.player?.y || 0) - spawn.y) < 1.5;
+    const playerNeedsDryLand = Boolean(player) && (
+      !this.isDrySurface(player.x, player.y) ||
+      this.isPlayerInWater() ||
+      player.z < this.getTopSolidZ(Math.floor(player.x), Math.floor(player.y)) + 1
+    );
+    let targetSpawn = spawn;
+
+    if (!this.isSpawnSpotSafe(spawn.x, spawn.y)) {
+      const repaired = this.findFreshSpawn({
+        seed: this.state.seed,
+        salt: (this.state.portalTravelCount || 0) + 17,
+        preferredBiome: spawn.biome || "",
+        minRadius: 12
+      });
+      if (!repaired) return;
+
+      this.state.worldSpawn = {
+        x: repaired.x,
+        y: repaired.y,
+        z: this.getTopSolidZ(Math.floor(repaired.x), Math.floor(repaired.y)) + 1,
+        biome: repaired.biome || this.biomeAt(Math.floor(repaired.x), Math.floor(repaired.y))
+      };
+      this.rememberSpawnPoint(repaired, this.state.seed);
+      targetSpawn = this.state.worldSpawn;
+    }
+
+    if (playerNeedsDryLand || currentAtSpawn) {
+      this.state.player.x = targetSpawn.x;
+      this.state.player.y = targetSpawn.y;
+      this.state.player.z = targetSpawn.z;
+      this.state.player.velX = 0;
+      this.state.player.velY = 0;
+      this.state.player.velZ = 0;
+      this.state.player.flyMode = false;
+      this.jumpQueued = false;
+      this.resetCameraPoint();
+    }
+  }
+
+  findFreshSpawn(options = {}) {
+    const seed = typeof options.seed === "number" ? options.seed : (this.state?.seed || 1);
+    const salt = options.salt || 0;
+    const anchor = this.getSpawnAnchor(seed, salt);
+    return this.findDrySpawn({
+      ...options,
+      anchorX: typeof options.anchorX === "number" ? options.anchorX : anchor.x,
+      anchorY: typeof options.anchorY === "number" ? options.anchorY : anchor.y,
+      maxRadius: typeof options.maxRadius === "number" ? options.maxRadius : 180,
+      avoidPositions: Array.isArray(options.avoidPositions) ? options.avoidPositions : this.getRecentSpawnList(seed),
+      minAvoidDistance: typeof options.minAvoidDistance === "number" ? options.minAvoidDistance : 22,
+      requireOpenArea: options.requireOpenArea !== false
+    });
+  }
+
+  findDrySpawn(options = {}) {
+    const {
+      preferredBiome = "",
+      avoidBiome = "",
+      minRadius = 0,
+      anchorX = 0,
+      anchorY = 0,
+      maxRadius = 140,
+      avoidPositions = [],
+      minAvoidDistance = 18,
+      requireOpenArea = true
+    } = options;
+    const seed = this.state.seed || 1;
+    let fallback = null;
+    let best = null;
+    let bestScore = -Infinity;
+
+    for (let attempt = 0; attempt < 240; attempt += 1) {
+      const ring = Math.floor(attempt / 12);
+      const radius = minRadius + 4 + ring * 4 + Math.floor(this.hash01(seed * 0.91 + attempt * 13.3) * 5);
+      if (radius > maxRadius) break;
+      const angle = this.hash01(seed * 0.41 + attempt * 17.7) * Math.PI * 2;
+      const cx = Math.round(anchorX + Math.cos(angle) * radius);
+      const cy = Math.round(anchorY + Math.sin(angle) * radius);
+
+      for (let ox = -1; ox <= 1; ox += 1) {
+        for (let oy = -1; oy <= 1; oy += 1) {
+          const x = cx + ox;
+          const y = cy + oy;
+          const h = this.terrainHeight(x, y);
+          if (h < SEA_LEVEL + 1 || !this.isDrySurface(x, y)) continue;
+          const biome = this.biomeAt(x, y, h);
+          if (preferredBiome && biome !== preferredBiome) continue;
+          if (avoidBiome && biome === avoidBiome) continue;
+          const slope = this.getTerrainSlope(x, y, h);
+          const spot = { x: x + 0.5, y: y + 0.5, biome };
+          const nearestAvoid = avoidPositions.length
+            ? Math.min(...avoidPositions.map((p) => Math.hypot((p?.x || 0) - spot.x, (p?.y || 0) - spot.y)))
+            : Infinity;
+          const openArea = this.isSpawnSpotSafe(x, y);
+          const score = (openArea ? 18 : 0) + Math.min(20, nearestAvoid) - slope * 8 - Math.hypot(x - anchorX, y - anchorY) * 0.03 + this.hash01(seed * 1.19 + x * 17 + y * 23);
+          if (!fallback || score > fallback.score) fallback = { ...spot, slope, score };
+          if (nearestAvoid < minAvoidDistance) continue;
+          if (requireOpenArea && !openArea) continue;
+          if (score > bestScore) {
+            bestScore = score;
+            best = spot;
+          }
+          if (openArea && slope <= 0.95 && nearestAvoid >= minAvoidDistance + 4) return spot;
+        }
+      }
+    }
+
+    if (best) return best;
+    if (fallback) return { x: fallback.x, y: fallback.y, biome: fallback.biome };
+
+    for (let r = 0; r <= 28; r += 1) {
+      for (let x = -r; x <= r; x += 1) {
+        for (let y = -r; y <= r; y += 1) {
+          if (Math.abs(x) !== r && Math.abs(y) !== r) continue;
+          const h = this.terrainHeight(x, y);
+          if (h < SEA_LEVEL + 1 || !this.isDrySurface(x, y)) continue;
+          const biome = this.biomeAt(x, y, h);
+          if (preferredBiome && biome !== preferredBiome) continue;
+          if (avoidBiome && biome === avoidBiome) continue;
+          const spot = { x: x + 0.5, y: y + 0.5, biome };
+          const nearestAvoid = avoidPositions.length
+            ? Math.min(...avoidPositions.map((p) => Math.hypot((p?.x || 0) - spot.x, (p?.y || 0) - spot.y)))
+            : Infinity;
+          const openArea = this.isSpawnSpotSafe(x, y);
+          if (!fallback) fallback = { ...spot, score: -Infinity };
+          if (nearestAvoid < minAvoidDistance) continue;
+          if (requireOpenArea && !openArea) continue;
+          if (this.getTerrainSlope(x, y, h) <= 1.25) return spot;
+        }
+      }
+    }
+    return fallback || { x: 0.5, y: 0.5, biome: "grass" };
+  }
+
+  getWaterTopZ(x, y) {
+    for (let z = MAX_Z; z >= MIN_Z; z -= 1) {
+      const type = this.getBlock(x, y, z);
+      if (type === "water" || type === "waterfall") return z + 1;
+    }
+    return MIN_Z;
+  }
+
+  isPlayerInWater() {
+    const p = this.state.player;
+    const px = Math.floor(p.x);
+    const py = Math.floor(p.y);
+    const waterTop = this.getWaterTopZ(px, py);
+    return waterTop > MIN_Z && p.z < waterTop + 0.2;
+  }
+
+  findNearestZombie(x, y, maxDist = Infinity) {
+    let best = null;
+    let bestD = maxDist;
+    for (const z of this.state.zombies) {
+      const d = Math.hypot(x - z.x, y - z.y);
+      if (d < bestD) {
+        bestD = d;
+        best = z;
+      }
+    }
+    return best;
+  }
+
+  findNearestPersonOrPlayer(x, y, maxDist = Infinity) {
+    let best = null;
+    let bestD = maxDist;
+
+    const playerD = Math.hypot(x - this.state.player.x, y - this.state.player.y);
+    if (playerD < bestD) {
+      best = this.state.player;
+      bestD = playerD;
+    }
+
+    for (const p of this.state.people) {
+      const d = Math.hypot(x - p.x, y - p.y);
+      if (d < bestD) {
+        bestD = d;
+        best = p;
+      }
+    }
+    return best;
+  }
+
+  checkEntityTnt() {
+    const check = (entity, onHit, useEntityDepth = false) => {
+      const x = Math.floor(entity.x);
+      const y = Math.floor(entity.y);
+      const z = useEntityDepth ? Math.floor(entity.z || this.getTopSolidZ(x, y)) : this.getTopSolidZ(x, y);
+      if (this.getBlock(x, y, z) === "tnt") onHit(x, y, z);
+    };
+
+    check(this.state.player, (x, y, z) => {
+      this.explode(x, y, z, 3.8, true);
+    });
+
+    this.state.people.forEach((person) => {
+      check(person, (x, y, z) => this.explode(x, y, z, 3.4, true));
+    });
+
+    this.state.zombies.forEach((zombie) => {
+      check(zombie, (x, y, z) => this.explode(x, y, z, 3.4, true), true);
+    });
+  }
+
+  explode(cx, cy, cz, radius, triggeredByTnt = false) {
+    this.state.explosions.push({ x: cx + 0.5, y: cy + 0.5, z: cz + 0.6, ms: 520, radius });
+
+    for (let dx = -Math.ceil(radius); dx <= Math.ceil(radius); dx += 1) {
+      for (let dy = -Math.ceil(radius); dy <= Math.ceil(radius); dy += 1) {
+        for (let dz = -Math.ceil(radius); dz <= Math.ceil(radius); dz += 1) {
+          const dist = Math.hypot(dx, dy, dz * 0.65);
+          if (dist > radius) continue;
+          const x = cx + dx;
+          const y = cy + dy;
+          const z = cz + dz;
+          const t = this.getBlock(x, y, z);
+          if (!this.isSolid(t) || t === "bedrock" || t === "portal") continue;
+          this.setBlock(x, y, z, "air");
+          delete this.state.burning[this.key(x, y, z)];
+        }
+      }
+    }
+
+    const hitEntity = (entity) => Math.hypot(entity.x - cx, entity.y - cy, (entity.z - cz) * 0.65) <= radius + 0.25;
+
+    this.state.people = this.state.people.filter((p) => !hitEntity(p));
+    this.state.animals = this.state.animals.filter((a) => !hitEntity(a));
+    this.state.zombies = this.state.zombies.filter((z) => !hitEntity(z));
+
+    if (hitEntity(this.state.player)) {
+      this.damagePlayer(4, "blast");
+      this.state.player.x += (Math.random() - 0.5) * 2;
+      this.state.player.y += (Math.random() - 0.5) * 2;
+      this.state.player.z = this.getTopSolidZ(Math.floor(this.state.player.x), Math.floor(this.state.player.y)) + 1;
+    }
+
+    if (triggeredByTnt) this.say("Boom. TNT exploded.");
+  }
+
+  getViewDirection() {
+    const p = this.state.player;
+    const flat = Math.cos(p.pitch);
+    return {
+      x: Math.cos(p.facing) * flat,
+      y: Math.sin(p.facing) * flat,
+      z: Math.sin(p.pitch)
+    };
+  }
+
+  raycastTarget(maxDist = INTERACT_DISTANCE + 1.8, step = 0.14) {
+    const p = this.state.player;
+    const eye = { x: p.x, y: p.y, z: p.z + EYE_HEIGHT };
+    const dir = this.getViewDirection();
+    let prev = null;
+    let lastKey = "";
+
+    for (let t = 0.2; t <= maxDist; t += step) {
+      const wx = eye.x + dir.x * t;
+      const wy = eye.y + dir.y * t;
+      const wz = eye.z + dir.z * t;
+      const cell = { x: Math.floor(wx), y: Math.floor(wy), z: Math.floor(wz) };
+      const key = this.key(cell.x, cell.y, cell.z);
+      if (key === lastKey) continue;
+      lastKey = key;
+      const type = this.getBlock(cell.x, cell.y, cell.z);
+      if (type === "water" || type === "waterfall") {
+        prev = cell;
+        continue;
+      }
+      if (this.isRenderable(type)) {
+        return { x: cell.x, y: cell.y, z: cell.z, type, place: prev };
+      }
+      prev = cell;
+    }
+
+    return prev ? { ...prev, type: "", place: prev } : null;
+  }
+
+  terrainHeight(x, y) {
+    const seed = this.state.seed || 1;
+    const profile = this.getWorldProfile(seed);
+    const flatWave = Math.sin((x + seed * 0.031) * 0.022) * 0.45 + Math.cos((y - seed * 0.037) * 0.02) * 0.38;
+    let height = profile.plainHeight + Math.round(flatWave * 2) * 0.5;
+    const landmass = this.getLandmassCenter(seed);
+    const distToLandmass = Math.hypot(x - landmass.x, y - landmass.y);
+    const landFalloff = Math.max(0, 1 - distToLandmass / 96);
+    if (landFalloff > 0) {
+      height += landFalloff * 4.5 + landFalloff * landFalloff * 4.5;
+    }
+
+    const oceanField = Math.sin((x - seed * 0.09) * 0.0052) + Math.cos((y + seed * 0.07) * 0.0048) + Math.sin((x + y + seed) * 0.0038);
+    if (oceanField + profile.oceanBias > 1.42) {
+      height -= 3 + Math.floor(this.hash01(seed + x * 17 + y * 23) * 4);
+    }
+
+    const basinField = Math.sin((x + seed * 0.043) * 0.013) + Math.cos((y - seed * 0.051) * 0.014) + Math.sin((x - y + seed) * 0.009);
+    if (basinField + profile.oceanBias * 0.72 > 1.48) {
+      height -= 1 + Math.floor(this.hash01(seed * 1.31 + x * 31 + y * 47) * 2);
+    }
+
+    const rangeField = Math.sin((x + seed * 0.13) * 0.0105) + Math.cos((y - seed * 0.1) * 0.0095) + Math.sin((x - y + seed) * 0.0062);
+    if (rangeField + profile.mountainBias > 1.12) {
+      const ridge = 1 - Math.abs(Math.sin((x + seed * 0.21) * 0.053) * 0.58 + Math.cos((y - seed * 0.16) * 0.048) * 0.42);
+      const rough = this.hash01(seed * 1.7 + x * 77.3 + y * 133.7) * 1.4;
+      const rise = (rangeField + profile.mountainBias - 1.12) * 7.2 + ridge * 6.8 + rough;
+      height += Math.floor(rise / 1.5) * 1.5;
+    }
+
+    if (landFalloff > 0.28 && height < SEA_LEVEL + 2) {
+      height = SEA_LEVEL + 2 + landFalloff * 2.2;
+    }
+
+    const clamped = Math.max(MIN_Z + 1, Math.min(MAX_Z - 2, height));
+    return Math.floor(clamped);
+  }
+
+  biomeAt(x, y, h = this.terrainHeight(x, y)) {
+    const v = this.hash01(this.state.seed + x * 19 + y * 29);
+    if (h <= SEA_LEVEL + 1 || v < 0.12) return "sand";
+    if (h >= 11 || (h >= 9 && v > 0.88)) return "snow";
+    return "grass";
+  }
+
+  isTreeAt(x, y, h = this.terrainHeight(x, y)) {
+    if (h <= SEA_LEVEL + 1) return false;
+    if (this.biomeAt(x, y, h) !== "grass") return false;
+    if (this.getTerrainSlope(x, y, h) > 2.1) return false;
+    const profile = this.getWorldProfile(this.state.seed);
+    const v = this.hash01(this.state.seed + x * 92821 + y * 68917);
+    return v > 0.978 - profile.treeBias;
+  }
+
+  getNaturalBlock(x, y, z) {
+    if (z <= MIN_Z) return "bedrock";
+
+    const h = this.terrainHeight(x, y);
+    const profile = this.getWorldProfile(this.state.seed);
+    if (z > h) {
+      const waterfall = this.getWaterfallInfo(x, y, h);
+      if (waterfall && z >= waterfall.bottom && z <= waterfall.top) return "waterfall";
+      if (z <= SEA_LEVEL) return "water";
+      if (this.isTreeAt(x, y, h)) {
+        const trunkTop = h + 3;
+        if (z >= h + 1 && z <= trunkTop) return "wood";
+      }
+
+      if (z >= h + 3 && z <= h + 4) {
+        const nearTree = this.isTreeAt(x, y, h) || this.isTreeAt(x + 1, y) || this.isTreeAt(x - 1, y) || this.isTreeAt(x, y + 1) || this.isTreeAt(x, y - 1);
+        if (nearTree) return "leaves";
+      }
+
+      return "air";
+    }
+
+    if (z === h) {
+      const b = this.biomeAt(x, y, h);
+      if (b === "sand") return "sand";
+      if (b === "snow") return "snow";
+      return "grass";
+    }
+
+    if (z >= h - 2) return "dirt";
+
+    const ore = this.getProfileOreAt(x, y, z, h, profile);
+    if (ore) return ore;
+
+    return "stone";
+  }
+
+  getBlock(x, y, z) {
+    const k = this.key(x, y, z);
+    const mods = (this.state && this.state.worldMods && typeof this.state.worldMods === "object")
+      ? this.state.worldMods
+      : {};
+    if (Object.prototype.hasOwnProperty.call(mods, k)) return mods[k];
+    return this.getNaturalBlock(x, y, z);
+  }
+
+  setBlock(x, y, z, type) {
+    const k = this.key(x, y, z);
+    const natural = this.getNaturalBlock(x, y, z);
+    if (!this.state.worldMods || typeof this.state.worldMods !== "object") {
+      this.state.worldMods = {};
+    }
+    if (type === natural) {
+      delete this.state.worldMods[k];
+      return;
+    }
+    this.state.worldMods[k] = type;
+  }
+
+  getTopSolidZ(x, y) {
+    for (let z = MAX_Z; z >= MIN_Z; z -= 1) {
+      if (this.isSolid(this.getBlock(x, y, z))) return z;
+    }
+    return MIN_Z;
+  }
+
+  refreshEntityHeights() {
+    this.state.player.z = this.getTopSolidZ(Math.floor(this.state.player.x), Math.floor(this.state.player.y)) + 1;
+    this.state.people.forEach((p) => {
+      if (this.isMerchant(p)) {
+        p.stall.z = this.getTopSolidZ(Math.floor(p.stall.x), Math.floor(p.stall.y)) + 1;
+      }
+      p.z = this.getTopSolidZ(Math.floor(p.x), Math.floor(p.y)) + 1;
+    });
+    this.state.animals.forEach((a) => {
+      if (a.habitat === "ocean") {
+        const floorZ = this.getTopSolidZ(Math.floor(a.x), Math.floor(a.y));
+        const waterTop = this.getWaterTopZ(Math.floor(a.x), Math.floor(a.y));
+        a.z = Math.max(floorZ + 0.75, waterTop - (a.depthBias || 0.9));
+      } else {
+        a.z = this.getTopSolidZ(Math.floor(a.x), Math.floor(a.y)) + 1;
+      }
+    });
+    this.state.zombies.forEach((z) => { z.z = this.getTopSolidZ(Math.floor(z.x), Math.floor(z.y)) + 1; });
+  }
+
+  isSolid(type) {
+    return Boolean(type && type !== "air" && type !== "water" && type !== "waterfall");
+  }
+
+  isRenderable(type) {
+    return Boolean(type && type !== "air");
+  }
+
+  colorFor(type) {
+    switch (type) {
+      case "grass": return "#5fa84f";
+      case "dirt": return "#7e5a3c";
+      case "stone": return "#8b939d";
+      case "sand": return "#c9b97b";
+      case "snow": return "#d5e6f5";
+      case "wood": return "#91623c";
+      case "leaves": return "#4f8d46";
+      case "metal": return "#9ea7b5";
+      case "metal_ore": return "#7a8594";
+      case "amber_ore": return "#c28a2a";
+      case "crystal_ore": return "#70d8ea";
+      case "sulfur_ore": return "#d6c046";
+      case "pearl_ore": return "#d7e8f8";
+      case "water": return "#2c67c4";
+      case "waterfall": return "#79cdf4";
+      case "tnt": return "#bb3333";
+      case "portal": return "#7f4bff";
+      case "bedrock": return "#303744";
+      default: return "#8b939d";
+    }
+  }
+
+  shade(hex, factor) {
+    const clean = hex.replace("#", "");
+    const n = parseInt(clean, 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    const fr = Math.max(0, Math.min(255, Math.floor(r * factor)));
+    const fg = Math.max(0, Math.min(255, Math.floor(g * factor)));
+    const fb = Math.max(0, Math.min(255, Math.floor(b * factor)));
+    return `rgb(${fr},${fg},${fb})`;
+  }
+
+  resetCameraPoint() {
+    const p = this.state.player;
+    this.cameraPoint = p ? { x: p.x, y: p.y, z: p.z + EYE_HEIGHT } : null;
+  }
+
+  updateCameraPoint(dtS) {
+    const p = this.state.player;
+    const target = { x: p.x, y: p.y, z: p.z + EYE_HEIGHT };
+    if (!this.cameraPoint) {
+      this.cameraPoint = { ...target };
+      return;
+    }
+    const blend = 1 - Math.exp(-CAMERA_SMOOTHING * dtS);
+    this.cameraPoint.x += (target.x - this.cameraPoint.x) * blend;
+    this.cameraPoint.y += (target.y - this.cameraPoint.y) * blend;
+    this.cameraPoint.z += (target.z - this.cameraPoint.z) * blend;
+  }
+
+  getCameraPoint() {
+    if (this.cameraPoint) return this.cameraPoint;
+    const p = this.state.player;
+    return { x: p.x, y: p.y, z: p.z + EYE_HEIGHT };
+  }
+
+  worldToCamera(wx, wy, wz) {
+    const p = this.state.player;
+    const cam = this.getCameraPoint();
+    const dx = wx - cam.x;
+    const dy = wy - cam.y;
+    const dz = wz - cam.z;
+    const cosYaw = Math.cos(p.facing);
+    const sinYaw = Math.sin(p.facing);
+    const right = -dx * sinYaw + dy * cosYaw;
+    const forward = dx * cosYaw + dy * sinYaw;
+    const cosPitch = Math.cos(p.pitch);
+    const sinPitch = Math.sin(p.pitch);
+    return {
+      right,
+      depth: forward * cosPitch + dz * sinPitch,
+      up: dz * cosPitch - forward * sinPitch
+    };
+  }
+
+  project3D(wx, wy, wz) {
+    const c = this.worldToCamera(wx, wy, wz);
+    if (c.depth <= 0.08) return null;
+    const cw = this.canvas.clientWidth;
+    const ch = this.canvas.clientHeight;
+    const focal = Math.min(cw, ch) * 0.92;
+    return {
+      x: cw * 0.5 + (c.right * focal) / c.depth,
+      y: ch * 0.56 - (c.up * focal) / c.depth,
+      depth: c.depth
+    };
+  }
+
+  drawFace(points, fill, alpha = 1, stroke = "rgba(8,16,24,0.18)") {
+    if (points.some((p) => !p)) return;
+    const c = this.ctx;
+    c.save();
+    c.globalAlpha = alpha;
+    c.fillStyle = fill;
+    c.beginPath();
+    c.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i += 1) c.lineTo(points[i].x, points[i].y);
+    c.closePath();
+    c.fill();
+    if (stroke) {
+      c.strokeStyle = stroke;
+      c.lineWidth = 1;
+      c.stroke();
+    }
+    c.restore();
+  }
+
+  drawFireBillboard(x, y, z) {
+    const base = this.project3D(x + 0.5, y + 0.5, z + 0.15);
+    const top = this.project3D(x + 0.5, y + 0.5, z + 1.35);
+    if (!base || !top) return;
+    const c = this.ctx;
+    const h = Math.max(8, base.y - top.y);
+    const w = h * 0.45;
+    const flicker = 0.7 + Math.sin(this.ambientMs * 0.024 + x * 3 + y * 5) * 0.16;
+    c.save();
+    c.globalCompositeOperation = "screen";
+    c.fillStyle = `rgba(255,110,40,${0.42 * flicker})`;
+    c.beginPath();
+    c.ellipse(base.x, base.y - h * 0.4, w, h * 0.62, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = `rgba(255,220,120,${0.55 * flicker})`;
+    c.beginPath();
+    c.ellipse(base.x, base.y - h * 0.56, w * 0.48, h * 0.34, 0, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  }
+
+  drawExplosionBillboard(fx) {
+    const p = this.project3D(fx.x, fx.y, fx.z);
+    if (!p) return;
+    const c = this.ctx;
+    const t = fx.ms / 520;
+    const radius = Math.max(10, (1 - t) * 120 / Math.max(0.6, p.depth * 0.18));
+    c.save();
+    c.globalCompositeOperation = "screen";
+    c.fillStyle = `rgba(255,170,60,${0.34 + t * 0.22})`;
+    c.beginPath();
+    c.arc(p.x, p.y, radius, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = `rgba(255,245,180,${0.16 + t * 0.18})`;
+    c.beginPath();
+    c.arc(p.x, p.y, radius * 0.46, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  }
+
+  drawCloudBillboard(x, y, z, size, alpha = 1) {
+    const p = this.project3D(x, y, z);
+    if (!p || p.depth < 1.5) return;
+    const c = this.ctx;
+    const scale = Math.max(16, (size * 110) / Math.max(1, p.depth));
+    c.save();
+    c.globalAlpha = alpha;
+    c.fillStyle = "rgba(255,255,255,0.82)";
+    c.beginPath();
+    c.ellipse(p.x - scale * 0.3, p.y, scale * 0.42, scale * 0.24, 0, 0, Math.PI * 2);
+    c.ellipse(p.x, p.y - scale * 0.06, scale * 0.5, scale * 0.28, 0, 0, Math.PI * 2);
+    c.ellipse(p.x + scale * 0.34, p.y, scale * 0.38, scale * 0.22, 0, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  }
+
+  drawClouds() {
+    if (this.isPlayerInWater()) return;
+    const px = Math.floor(this.state.player.x / 18);
+    const py = Math.floor(this.state.player.y / 18);
+    const boost = this.state.weather.type === "cloudy" || this.state.weather.type === "rain" || this.state.weather.type === "storm" ? 0.12 : 0;
+    for (let gx = px - 4; gx <= px + 4; gx += 1) {
+      for (let gy = py - 4; gy <= py + 4; gy += 1) {
+        const hash = this.hash01(this.state.seed * 0.61 + gx * 41 + gy * 67);
+        if (hash < 0.76 - boost) continue;
+        const wx = gx * 18 + this.hash01(hash * 733) * 10 - 5;
+        const wy = gy * 18 + this.hash01(hash * 977) * 10 - 5;
+        const wz = 20 + this.hash01(hash * 557) * 6;
+        const size = 1.8 + this.hash01(hash * 131) * 1.6;
+        this.drawCloudBillboard(wx, wy, wz, size, 0.72 + boost * 0.9);
+      }
+    }
+  }
+
+  drawWeatherOverlay(cw, ch) {
+    if (this.isPlayerInWater()) return;
+    const weather = this.state.weather.type;
+    if (weather === "clear" || weather === "cloudy") return;
+    const c = this.ctx;
+    c.save();
+    if (weather === "rain" || weather === "storm") {
+      c.strokeStyle = weather === "storm" ? "rgba(210,230,255,0.42)" : "rgba(210,230,255,0.26)";
+      c.lineWidth = weather === "storm" ? 1.5 : 1;
+      const streaks = weather === "storm" ? 80 : 54;
+      for (let i = 0; i < streaks; i += 1) {
+        const hash = this.hash01(this.state.seed * 0.29 + i * 37 + this.ambientMs * 0.0024);
+        const x = hash * cw;
+        const y = (this.hash01(this.state.seed * 0.71 + i * 53 + this.ambientMs * 0.0031) * ch);
+        c.beginPath();
+        c.moveTo(x, y);
+        c.lineTo(x - 8, y + 18);
+        c.stroke();
+      }
+      if (weather === "storm" && this.hash01(this.state.seed + Math.floor(this.ambientMs / 180)) > 0.984) {
+        c.fillStyle = "rgba(255,255,255,0.1)";
+        c.fillRect(0, 0, cw, ch);
+      }
+    } else if (weather === "snow") {
+      c.fillStyle = "rgba(245,250,255,0.78)";
+      for (let i = 0; i < 64; i += 1) {
+        const hash = this.hash01(this.state.seed * 0.39 + i * 29 + this.ambientMs * 0.0009);
+        const x = hash * cw;
+        const y = this.hash01(this.state.seed * 0.93 + i * 61 + this.ambientMs * 0.0012) * ch;
+        const size = 1.5 + this.hash01(i * 11 + this.ambientMs * 0.001) * 2.5;
+        c.fillRect(x, y, size, size);
+      }
+    }
+    c.restore();
+  }
+
+  drawTargetOutline(hit) {
+    if (!hit || !hit.type) return;
+    const center = this.project3D(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5);
+    if (!center) return;
+    const c = this.ctx;
+    const size = Math.max(10, 82 / Math.max(0.7, center.depth));
+    c.save();
+    c.strokeStyle = "rgba(255,255,255,0.95)";
+    c.lineWidth = 2;
+    c.strokeRect(center.x - size * 0.5, center.y - size * 0.5, size, size);
+    c.restore();
+  }
+
+  drawEntityBillboard(entity, palette, label, style = "human") {
+    const foot = this.project3D(entity.x, entity.y, entity.z - 0.02);
+    const head = this.project3D(entity.x, entity.y, entity.z + 1.62);
+    if (!foot || !head) return;
+    const c = this.ctx;
+    const h = Math.max(12, foot.y - head.y);
+    const w = h * 0.34;
+    const headSize = w * 0.72;
+    const bodyTop = head.y + h * 0.34;
+    const bodyHeight = h * 0.42;
+    const armTop = head.y + h * 0.38;
+    const legTop = head.y + h * 0.72;
+    const limbW = Math.max(2, w * 0.16);
+    const handSize = Math.max(2, w * 0.18);
+    const cycle = entity.walkCycle || 0;
+    const stride = Math.sin(cycle);
+    const legSwing = style === "zombie" ? Math.sin(cycle * 0.6) * h * 0.05 : stride * h * 0.12;
+    const armSwing = style === "zombie" ? h * 0.08 + Math.sin(cycle * 0.5) * h * 0.03 : -stride * h * 0.1;
+    const bodyLean = style === "zombie" ? h * 0.04 : 0;
+    const headTilt = style === "zombie" ? Math.sin(cycle * 0.4) * w * 0.08 : 0;
+    c.fillStyle = "rgba(0,0,0,0.22)";
+    c.beginPath();
+    c.ellipse(foot.x, foot.y + 2, w * 0.65, h * 0.12, 0, 0, Math.PI * 2);
+    c.fill();
+
+    c.fillStyle = palette.head;
+    c.fillRect(foot.x - headSize * 0.5 + headTilt, head.y + bodyLean * 0.15, headSize, headSize);
+
+    c.fillStyle = palette.body;
+    c.fillRect(foot.x - w * 0.42, bodyTop + bodyLean, w * 0.84, bodyHeight);
+
+    c.fillStyle = palette.limb;
+    c.fillRect(foot.x - w * 0.66, armTop + armSwing, limbW, h * 0.3);
+    c.fillRect(foot.x + w * 0.5, armTop - armSwing, limbW, h * 0.3);
+    c.fillRect(foot.x - w * 0.22, legTop + legSwing, limbW, h * 0.28);
+    c.fillRect(foot.x + w * 0.06, legTop - legSwing, limbW, h * 0.28);
+
+    c.fillStyle = palette.head;
+    c.fillRect(foot.x - w * 0.7, armTop + h * 0.26 + armSwing, handSize, handSize);
+    c.fillRect(foot.x + w * 0.46, armTop + h * 0.26 - armSwing, handSize, handSize);
+
+    if (foot.depth < 14) {
+      const eyeSize = Math.max(1.5, headSize * 0.12);
+      c.fillStyle = "#12202b";
+      c.fillRect(foot.x - headSize * 0.22 + headTilt, head.y + headSize * 0.28 + bodyLean * 0.15, eyeSize, eyeSize);
+      c.fillRect(foot.x + headSize * 0.1 + headTilt, head.y + headSize * 0.28 + bodyLean * 0.15, eyeSize, eyeSize);
+      c.fillRect(foot.x - headSize * 0.14 + headTilt, head.y + headSize * 0.62 + bodyLean * 0.15, headSize * 0.28, Math.max(1.5, headSize * 0.08));
+    }
+
+    if (foot.depth < 10) {
+      c.fillStyle = "rgba(6,12,18,0.68)";
+      c.font = "12px Trebuchet MS";
+      c.fillText(label, foot.x - c.measureText(label).width / 2, head.y - 8);
+    }
+  }
+
+  drawAnimalBillboard(animal) {
+    const c = this.ctx;
+    const scale = animal.scale || 1;
+    const bodyBase = animal.habitat === "ocean" ? animal.z + 0.26 : animal.z - 0.02;
+    const foot = this.project3D(animal.x, animal.y, bodyBase);
+    const crown = this.project3D(animal.x, animal.y, bodyBase + (animal.shape === "fish" ? 0.78 : animal.shape === "jelly" ? 0.92 : 1.08) * scale);
+    if (!foot || !crown) return;
+
+    const h = Math.max(10, foot.y - crown.y);
+    const w = h * (animal.shape === "fish" ? 0.58 : animal.shape === "jelly" ? 0.48 : 0.62);
+    const stride = Math.sin(animal.walkCycle || 0);
+    const bob = animal.habitat === "ocean" ? Math.sin(this.ambientMs * 0.004 + (animal.bobPhase || 0)) * h * 0.04 : 0;
+    const palette = animal.palette || ANIMAL_SPECIES.grass[0].palette;
+
+    c.save();
+    c.fillStyle = "rgba(0,0,0,0.18)";
+    c.beginPath();
+    c.ellipse(foot.x, foot.y + 2, w * 0.62, h * 0.11, 0, 0, Math.PI * 2);
+    c.fill();
+
+    if (animal.shape === "fish" || animal.shape === "turtle") {
+      c.fillStyle = palette.body;
+      c.beginPath();
+      c.ellipse(foot.x, foot.y - h * 0.28 + bob, w * 0.62, h * 0.22, 0, 0, Math.PI * 2);
+      c.fill();
+
+      c.fillStyle = palette.limb;
+      c.beginPath();
+      c.moveTo(foot.x - w * 0.72, foot.y - h * 0.28 + bob);
+      c.lineTo(foot.x - w * 1.08, foot.y - h * 0.4 + bob);
+      c.lineTo(foot.x - w * 1.02, foot.y - h * 0.14 + bob);
+      c.closePath();
+      c.fill();
+
+      c.fillStyle = palette.head;
+      c.beginPath();
+      c.ellipse(foot.x + w * 0.6, foot.y - h * 0.29 + bob, w * 0.22, h * 0.13, 0, 0, Math.PI * 2);
+      c.fill();
+
+      if (animal.shape === "turtle") {
+        c.fillStyle = palette.limb;
+        c.fillRect(foot.x - w * 0.32, foot.y - h * 0.1 + bob + stride * 1.4, w * 0.18, h * 0.08);
+        c.fillRect(foot.x + w * 0.08, foot.y - h * 0.1 + bob - stride * 1.4, w * 0.18, h * 0.08);
+      }
+    } else if (animal.shape === "jelly") {
+      c.fillStyle = palette.head;
+      c.beginPath();
+      c.ellipse(foot.x, foot.y - h * 0.36 + bob, w * 0.46, h * 0.26, 0, Math.PI, 0, true);
+      c.lineTo(foot.x + w * 0.46, foot.y - h * 0.36 + bob);
+      c.fill();
+
+      c.strokeStyle = palette.limb;
+      c.lineWidth = Math.max(1.2, w * 0.08);
+      for (const tx of [-0.24, -0.08, 0.08, 0.24]) {
+        c.beginPath();
+        c.moveTo(foot.x + w * tx, foot.y - h * 0.36 + bob);
+        c.lineTo(foot.x + w * tx + stride * 1.2, foot.y + h * 0.1 + bob);
+        c.stroke();
+      }
+    } else {
+      c.fillStyle = palette.body;
+      c.beginPath();
+      c.ellipse(foot.x, foot.y - h * 0.28, w * 0.55, h * 0.22, 0, 0, Math.PI * 2);
+      c.fill();
+
+      c.fillStyle = palette.head;
+      c.beginPath();
+      c.ellipse(foot.x + w * 0.48, foot.y - h * 0.34, w * 0.24, h * 0.16, 0, 0, Math.PI * 2);
+      c.fill();
+
+      c.fillStyle = palette.limb;
+      const legH = h * 0.24;
+      c.fillRect(foot.x - w * 0.32, foot.y - legH * 0.3 + stride * 1.2, w * 0.1, legH);
+      c.fillRect(foot.x - w * 0.08, foot.y - legH * 0.2 - stride * 1.1, w * 0.1, legH);
+      c.fillRect(foot.x + w * 0.12, foot.y - legH * 0.18 - stride * 1.1, w * 0.1, legH);
+      c.fillRect(foot.x + w * 0.34, foot.y - legH * 0.28 + stride * 1.2, w * 0.1, legH);
+
+      if (animal.shape === "crab") {
+        c.fillRect(foot.x - w * 0.72, foot.y - h * 0.34, w * 0.22, h * 0.05);
+        c.fillRect(foot.x + w * 0.5, foot.y - h * 0.34, w * 0.22, h * 0.05);
+      }
+    }
+
+    c.fillStyle = palette.accent || "#f5f5f5";
+    c.fillRect(foot.x + w * 0.58, foot.y - h * 0.37 + bob, Math.max(1.5, w * 0.06), Math.max(1.5, h * 0.04));
+
+    if (foot.depth < 8) {
+      c.fillStyle = "rgba(6,12,18,0.7)";
+      c.font = "12px Trebuchet MS";
+      c.fillText(animal.label || "Animal", foot.x - c.measureText(animal.label || "Animal").width / 2, crown.y - 8);
+    }
+    c.restore();
+  }
+
+  drawStallBillboard(merchant) {
+    const stall = merchant?.stall;
+    if (!stall) return;
+
+    const privateRadius = stall.privateZoneRadius || 2.4;
+    const x0 = stall.x - 0.9;
+    const x1 = stall.x + 0.9;
+    const y0 = stall.y - 0.58;
+    const y1 = stall.y + 0.58;
+    const z0 = stall.z;
+    const counterTop = z0 + 0.74;
+    const roofBack = z0 + 1.9;
+    const roofFront = z0 + 1.68;
+    const awning = stall.color || "#d6934f";
+
+    this.drawFace(
+      [
+        this.project3D(stall.x - privateRadius, stall.y - privateRadius * 0.72, z0 + 0.03),
+        this.project3D(stall.x + privateRadius, stall.y - privateRadius * 0.72, z0 + 0.03),
+        this.project3D(stall.x + privateRadius, stall.y + privateRadius * 0.72, z0 + 0.03),
+        this.project3D(stall.x - privateRadius, stall.y + privateRadius * 0.72, z0 + 0.03)
+      ],
+      "rgba(28,48,66,0.18)",
+      1,
+      "rgba(160,215,255,0.16)"
+    );
+
+    this.drawFace(
+      [this.project3D(x0, y0, counterTop), this.project3D(x1, y0, counterTop), this.project3D(x1, y1, counterTop), this.project3D(x0, y1, counterTop)],
+      this.shade("#94663d", 1.08),
+      1
+    );
+    this.drawFace(
+      [this.project3D(x0, y1, z0), this.project3D(x1, y1, z0), this.project3D(x1, y1, counterTop), this.project3D(x0, y1, counterTop)],
+      "#7d5630",
+      1
+    );
+    this.drawFace(
+      [this.project3D(x0 - 0.1, y0 - 0.02, roofBack), this.project3D(x1 + 0.1, y0 - 0.02, roofBack), this.project3D(x1 + 0.18, y1 + 0.04, roofFront), this.project3D(x0 - 0.18, y1 + 0.04, roofFront)],
+      awning,
+      0.98,
+      "rgba(44,24,18,0.14)"
+    );
+    this.drawFace(
+      [this.project3D(x0 - 0.04, y0 + 0.06, roofBack - 0.12), this.project3D(x1 + 0.04, y0 + 0.06, roofBack - 0.12), this.project3D(x1 + 0.12, y1 - 0.02, roofFront - 0.12), this.project3D(x0 - 0.12, y1 - 0.02, roofFront - 0.12)],
+      this.shade(awning, 0.76),
+      0.84,
+      ""
+    );
+
+    const c = this.ctx;
+    c.save();
+    c.strokeStyle = "#5d3f25";
+    c.lineCap = "round";
+    for (const [px, py] of [[x0 + 0.12, y0 + 0.08], [x1 - 0.12, y0 + 0.08], [x0 + 0.12, y1 - 0.08], [x1 - 0.12, y1 - 0.08]]) {
+      const top = this.project3D(px, py, roofFront - 0.02);
+      const bottom = this.project3D(px, py, z0);
+      if (!top || !bottom) continue;
+      c.lineWidth = Math.max(2, 12 / Math.max(1, top.depth));
+      c.beginPath();
+      c.moveTo(top.x, top.y);
+      c.lineTo(bottom.x, bottom.y);
+      c.stroke();
+    }
+
+    const sign = this.project3D(stall.x, stall.y, roofBack + 0.14);
+    if (sign && sign.depth < 15) {
+      const label = merchant.shop?.title || "Stall";
+      c.fillStyle = "rgba(10,16,26,0.72)";
+      c.font = "12px Trebuchet MS";
+      const width = c.measureText(label).width + 12;
+      c.fillRect(sign.x - width / 2, sign.y - 12, width, 16);
+      c.fillStyle = "#f3f7ff";
+      c.fillText(label, sign.x - width / 2 + 6, sign.y);
+    }
+    c.restore();
+  }
+
+  drawCube3D(x, y, z, type) {
+    const cam = this.getCameraPoint();
+    const base = this.colorFor(type);
+    const alpha = type === "water" ? 0.5 : (type === "waterfall" ? 0.68 : 1);
+    const x0 = x;
+    const x1 = x + 1;
+    const y0 = y;
+    const y1 = y + 1;
+    const z0 = z;
+    const z1 = z + 1;
+
+    const pts = {
+      nbl: this.project3D(x0, y0, z0),
+      nbr: this.project3D(x1, y0, z0),
+      fbl: this.project3D(x0, y1, z0),
+      fbr: this.project3D(x1, y1, z0),
+      ntl: this.project3D(x0, y0, z1),
+      ntr: this.project3D(x1, y0, z1),
+      ftl: this.project3D(x0, y1, z1),
+      ftr: this.project3D(x1, y1, z1)
+    };
+
+    if (cam.z >= z0 + 0.45 || type === "water") {
+      this.drawFace([pts.ntl, pts.ntr, pts.ftr, pts.ftl], this.shade(base, 1.08), alpha);
+    }
+    if (cam.x <= x0 + 0.5) {
+      this.drawFace([pts.ntl, pts.ftl, pts.fbl, pts.nbl], this.shade(base, 0.72), alpha);
+    } else {
+      this.drawFace([pts.ntr, pts.ftr, pts.fbr, pts.nbr], this.shade(base, 0.82), alpha);
+    }
+    if (cam.y <= y0 + 0.5) {
+      this.drawFace([pts.ntl, pts.ntr, pts.nbr, pts.nbl], this.shade(base, 0.86), alpha);
+    } else {
+      this.drawFace([pts.ftl, pts.ftr, pts.fbr, pts.fbl], this.shade(base, 0.62), alpha);
+    }
+
+    if (type === "portal") {
+      this.drawFace(
+        [this.project3D(x0 + 0.08, y0 + 0.08, z0 + 0.08), this.project3D(x1 - 0.08, y0 + 0.08, z0 + 0.08), this.project3D(x1 - 0.08, y1 - 0.08, z1 - 0.08), this.project3D(x0 + 0.08, y1 - 0.08, z1 - 0.08)],
+        `rgba(180,140,255,${0.34 + Math.sin(this.ambientMs * 0.008) * 0.14})`,
+        1,
+        ""
+      );
+    }
+
+    if (type === "tnt") {
+      const topA = this.project3D(x0 + 0.18, y0 + 0.18, z1 + 0.01);
+      const topB = this.project3D(x1 - 0.18, y1 - 0.18, z1 + 0.01);
+      if (topA && topB) {
+        const c = this.ctx;
+        c.fillStyle = "#f5e39a";
+        c.fillRect(Math.min(topA.x, topB.x), Math.min(topA.y, topB.y), Math.abs(topB.x - topA.x), Math.abs(topB.y - topA.y));
+      }
+    }
+
+    if (type === "waterfall") {
+      const top = this.project3D(x0 + 0.5, y0 + 0.5, z1);
+      const bottom = this.project3D(x0 + 0.5, y0 + 0.5, z0);
+      if (top && bottom) {
+        const c = this.ctx;
+        c.save();
+        c.strokeStyle = "rgba(235,248,255,0.55)";
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.moveTo(top.x, top.y);
+        c.lineTo(bottom.x, bottom.y);
+        c.stroke();
+        c.restore();
+      }
+    }
+
+    if (this.state.burning[this.key(x, y, z)]) this.drawFireBillboard(x, y, z);
+  }
+
+  render() {
+    const c = this.ctx;
+    const cw = this.canvas.clientWidth;
+    const ch = this.canvas.clientHeight;
+    const p = this.state.player;
+    const camPoint = this.getCameraPoint();
+    const inWater = this.isPlayerInWater();
+    const weather = this.state.weather.type;
+
+    c.clearRect(0, 0, cw, ch);
+    const sky = c.createLinearGradient(0, 0, 0, ch);
+    sky.addColorStop(0, inWater ? "#4f8fc1" : (weather === "storm" ? "#627b97" : weather === "rain" ? "#6f8eab" : "#7cb3ea"));
+    sky.addColorStop(0.5, inWater ? "#356d99" : (weather === "storm" ? "#445d78" : weather === "rain" ? "#547693" : "#4f86c0"));
+    sky.addColorStop(1, inWater ? "#1b3651" : (weather === "storm" ? "#24384c" : weather === "rain" ? "#35536d" : "#2d4f70"));
+    c.fillStyle = sky;
+    c.fillRect(0, 0, cw, ch);
+
+    this.drawClouds();
+
+    const horizon = ch * (0.55 + this.state.player.pitch * 0.18);
+    c.fillStyle = inWater ? "rgba(37,84,142,0.55)" : "rgba(52,96,134,0.9)";
+    c.fillRect(0, horizon, cw, ch - horizon);
+
+    const px = Math.floor(camPoint.x);
+    const py = Math.floor(camPoint.y);
+    const renderables = [];
+
+    for (let x = px - RENDER_RADIUS; x <= px + RENDER_RADIUS; x += 1) {
+      for (let y = py - RENDER_RADIUS; y <= py + RENDER_RADIUS; y += 1) {
+        const ring = Math.max(Math.abs(x - px), Math.abs(y - py));
+        const top = this.getTopSolidZ(x, y);
+        const waterSurface = this.getWaterTopZ(x, y) - 1;
+        if (ring <= VIEW_RADIUS) {
+          const low = Math.max(MIN_Z, Math.min(top, Math.floor(p.z) - 1) - 6);
+          const high = Math.min(MAX_Z, Math.max(top + 4, waterSurface + 1, Math.ceil(p.z) + 2));
+          for (let z = low; z <= high; z += 1) {
+            const t = this.getBlock(x, y, z);
+            if (!this.isRenderable(t)) continue;
+            const center = this.worldToCamera(x + 0.5, y + 0.5, z + 0.5);
+            if (center.depth <= 0.08) continue;
+            renderables.push({ kind: "block", depth: center.depth, x, y, z, t });
+          }
+        } else {
+          let surfaceZ = top;
+          let surfaceType = this.getBlock(x, y, top);
+          if (waterSurface >= top + 1) {
+            surfaceZ = waterSurface;
+            surfaceType = this.getBlock(x, y, waterSurface);
+          }
+          if (!this.isRenderable(surfaceType)) continue;
+          const center = this.worldToCamera(x + 0.5, y + 0.5, surfaceZ + 0.5);
+          if (center.depth <= 0.08) continue;
+          renderables.push({ kind: "surface", depth: center.depth, x, y, z: surfaceZ, t: surfaceType });
+        }
+      }
+    }
+
+    this.state.people.forEach((entity) => {
+      if (this.isMerchant(entity)) {
+        const stallCam = this.worldToCamera(entity.stall.x, entity.stall.y, entity.stall.z + 0.8);
+        if (stallCam.depth > 0.08) renderables.push({ kind: "stall", depth: stallCam.depth + 0.08, entity });
+      }
+      const cam = this.worldToCamera(entity.x, entity.y, entity.z + 0.8);
+      if (cam.depth > 0.08) renderables.push({ kind: "person", depth: cam.depth, entity });
+    });
+    this.state.animals.forEach((entity) => {
+      const cam = this.worldToCamera(entity.x, entity.y, entity.z + 0.55);
+      if (cam.depth > 0.08) renderables.push({ kind: "animal", depth: cam.depth, entity });
+    });
+    this.state.zombies.forEach((entity) => {
+      const cam = this.worldToCamera(entity.x, entity.y, entity.z + 0.8);
+      if (cam.depth > 0.08) renderables.push({ kind: "zombie", depth: cam.depth, entity });
+    });
+    this.state.explosions.forEach((fx) => {
+      const cam = this.worldToCamera(fx.x, fx.y, fx.z);
+      if (cam.depth > 0.08) renderables.push({ kind: "explosion", depth: cam.depth, fx });
+    });
+
+    renderables.sort((a, b) => b.depth - a.depth);
+    renderables.forEach((item) => {
+      if (item.kind === "block" || item.kind === "surface") this.drawCube3D(item.x, item.y, item.z, item.t);
+      if (item.kind === "stall") this.drawStallBillboard(item.entity);
+      if (item.kind === "person") {
+        const isMerchant = this.isMerchant(item.entity);
+        this.drawEntityBillboard(
+          item.entity,
+          isMerchant
+            ? { head: "#f0d7c3", body: "#b36c3e", limb: "#6b4529" }
+            : { head: "#f0d7c3", body: "#4d7bc0", limb: "#334d72" },
+          isMerchant ? `${item.entity.name} Shop` : item.entity.name,
+          isMerchant ? "merchant" : "human"
+        );
+      }
+      if (item.kind === "animal") this.drawAnimalBillboard(item.entity);
+      if (item.kind === "zombie") this.drawEntityBillboard(item.entity, { head: "#89b47b", body: "#3f6240", limb: "#2d4a2c" }, "Zombie", "zombie");
+      if (item.kind === "explosion") this.drawExplosionBillboard(item.fx);
+    });
+
+    this.drawTargetOutline(this.raycastTarget());
+
+    if (inWater) {
+      c.fillStyle = "rgba(70,130,200,0.2)";
+      c.fillRect(0, 0, cw, ch);
+    }
+
+    this.drawWeatherOverlay(cw, ch);
+
+    c.strokeStyle = "rgba(255,255,255,0.92)";
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(cw * 0.5 - 10, ch * 0.5);
+    c.lineTo(cw * 0.5 + 10, ch * 0.5);
+    c.moveTo(cw * 0.5, ch * 0.5 - 10);
+    c.lineTo(cw * 0.5, ch * 0.5 + 10);
+    c.stroke();
+
+    const nearbyMerchant = this.getNearbyMerchant();
+    if (nearbyMerchant) this.drawMerchantOverlay(nearbyMerchant, cw, ch);
+
+    if (this.messageMs > 0 && this.message) {
+      c.fillStyle = "rgba(10,16,26,0.75)";
+      c.fillRect(14, 58, Math.min(560, cw - 28), 32);
+      c.fillStyle = "#f2f7ff";
+      c.font = "15px Trebuchet MS";
+      c.fillText(this.message, 24, 79);
+    }
+  }
+
+  drawMerchantOverlay(merchant, cw, ch) {
+    const offers = merchant?.shop?.offers || [];
+    if (!offers.length) return;
+    const selected = this.clamp(merchant.shop.cursor, 0, 0, offers.length - 1);
+    const c = this.ctx;
+    const width = Math.min(480, cw - 36);
+    const rowH = 18;
+    const boxH = 80 + offers.length * rowH;
+    const top = ch - boxH - 20;
+    c.save();
+    c.fillStyle = "rgba(10,16,26,0.74)";
+    c.fillRect(18, top, width, boxH);
+    c.fillStyle = "#f4f7ff";
+    c.font = "bold 15px Trebuchet MS";
+    c.fillText(`${merchant.name}'s ${merchant.shop.title}`, 30, top + 24);
+    c.font = "13px Trebuchet MS";
+    c.fillStyle = "rgba(218,231,247,0.92)";
+    c.fillText("Open now. Press N to cycle offers and B to buy.", 30, top + 44);
+    c.fillText("Blue ground pad marks the shop's private zone.", 30, top + 62);
+    offers.forEach((offer, i) => {
+      c.fillStyle = i === selected ? "#ffe08a" : "#dbe7f7";
+      c.fillText(`${i === selected ? "> " : "  "}${this.describeShopOffer(offer)}`, 30, top + 84 + i * rowH);
+    });
+    c.restore();
+  }
+
+  renderFatal(err) {
+    const c = this.ctx;
+    const cw = this.canvas.clientWidth || window.innerWidth;
+    const ch = this.canvas.clientHeight || window.innerHeight;
+    c.clearRect(0, 0, cw, ch);
+    c.fillStyle = "#0d1420";
+    c.fillRect(0, 0, cw, ch);
+    c.fillStyle = "#ff7d7d";
+    c.font = "bold 18px Trebuchet MS";
+    c.fillText("Runtime error", 20, 40);
+    c.fillStyle = "#eaf2ff";
+    c.font = "14px Trebuchet MS";
+    c.fillText(String(err?.message || err || "Unknown error"), 20, 66);
+    c.fillText("Hard refresh once (Ctrl+F5).", 20, 90);
+  }
+
+  say(text) {
+    this.message = text;
+    this.messageMs = 2400;
+  }
+
+  key(x, y, z) {
+    return `${x},${y},${z}`;
+  }
+
+  parseKey(k) {
+    const [x, y, z] = String(k).split(",").map((n) => Number(n));
+    return { x, y, z };
+  }
+
+  hash01(v) {
+    const n = Math.sin(v * 12.9898 + 78.233) * 43758.5453;
+    return n - Math.floor(n);
+  }
+
+  clamp(v, fallback, min, max) {
+    const n = Number.isFinite(v) ? v : fallback;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    } catch {
+      // Ignore storage issues.
+    }
+  }
+
+  load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
 }

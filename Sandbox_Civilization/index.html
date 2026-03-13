@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -7,160 +7,38 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="hud">
-    <div>
-      <h1>Sandbox Civilization</h1>
-      <p>Minecraft-style survival civilization simulator</p>
+  <div class="hud">
+    <div class="hud-left">
+      <strong id="worldText">World 1</strong>
+      <span id="peopleText">People: 20/20</span>
+      <span id="zombieText">Zombies: 0</span>
+      <span id="selectedText">Selected: Wood</span>
     </div>
-    <div class="hud-stats">
-      <div>Health: <span id="healthText">10/10</span></div>
-      <div>Armor: <span id="armorText">0</span></div>
-      <div>Coins: <span id="coinsText">0</span></div>
-      <div>Weather: <span id="weatherText">Sunny</span></div>
-      <div>Gov: <span id="governmentText">Democracy</span></div>
+    <div class="hud-right">
+      <button id="inventoryToggleBtn">Inventory</button>
+      <button id="fullscreenBtn">Fullscreen</button>
     </div>
-    <div class="hud-actions">
-      <button id="saveBtn">Save</button>
-      <button id="loadBtn">Load</button>
-      <button id="mapBtn">Map</button>
-      <button id="resetBtn">Reset</button>
-      <a class="home-link" href="../Home.html">Home</a>
-    </div>
-  </header>
+  </div>
 
-  <main class="layout">
-    <section class="world-wrap">
-      <canvas id="worldCanvas" width="1200" height="720"></canvas>
-      <div id="raidWarningSign" class="raid-warning">WARNING: RAIDERS INVADING</div>
-      <div class="world-help">
-        Move: WASD / Arrows | Gun: J | Sword: K | Chop tree: Q | Plant seed: T | Harvest animal: H | Capture enemy: C
-      </div>
-    </section>
+  <main class="game-root">
+    <canvas id="worldCanvas"></canvas>
+    
 
-    <aside class="panel">
-      <section>
-        <h3>Inventory</h3>
-        <div id="inventoryView" class="card"></div>
-        <div class="grid" style="margin-top:6px;">
-          <button id="saveHighScoreBtn">Save High Score</button>
-          <button id="loadHighScoreBtn">Load High Score</button>
-        </div>
-      </section>
-
-      <section>
-        <h3>Build</h3>
-        <div class="grid">
-          <button data-build="government">Government HQ</button>
-          <button data-build="monument">Monument</button>
-          <button data-build="shop">Supply Shop</button>
-          <button data-build="house">House</button>
-          <button data-build="fort">Fort</button>
-          <button data-build="jail">Jail</button>
-          <button data-build="court">Court</button>
-          <button data-build="factory">Factory</button>
-          <button data-build="port">Port</button>
-          <button data-build="airbase">Airbase</button>
-          <button data-build="space_center">Space Center</button>
-        </div>
-        <div class="grid" style="margin-top:6px;">
-          <button id="blockEntranceBtn">Block Entrance</button>
-          <button id="unblockEntranceBtn">Unblock Entrance</button>
-        </div>
-      </section>
-
-      <section>
-        <h3>Supply Shop</h3>
-        <div id="shopStock" class="card"></div>
-        <div class="grid">
-          <button data-shop-buy="food">Buy Food</button>
-          <button data-shop-buy="seeds">Buy Seeds</button>
-          <button data-shop-buy="fuel">Buy Fuel</button>
-          <button data-shop-buy="ammo">Buy Ammo</button>
-        </div>
-      </section>
-
-      <section>
-        <h3>Flags</h3>
-        <label>Your Flag Color</label>
-        <input id="playerFlagColor" type="color" value="#2c7be5">
-        <label>Your Flag Symbol</label>
-        <input id="playerFlagSymbol" type="text" maxlength="2" value="SC">
-        <button id="applyFlagBtn">Apply Flag</button>
-      </section>
-
-      <section>
-        <h3>Government & Law</h3>
-        <label>Type</label>
-        <select id="govType">
-          <option>Democracy</option>
-          <option>Monarchy</option>
-          <option>Republic</option>
-          <option>Dictatorship</option>
-          <option>Tribal</option>
-          <option>Custom</option>
-        </select>
-        <label>Tax Rate</label>
-        <input id="taxRate" type="range" min="0" max="50" value="10">
-        <div>Tax: <span id="taxText">10%</span></div>
-        <label>Law Strictness</label>
-        <input id="lawRate" type="range" min="0" max="100" value="50">
-        <div class="grid">
-          <button id="runElectionBtn">Run Election</button>
-          <button id="runTrialBtn">Run Trial</button>
-          <button id="propagandaBtn">Propaganda</button>
-        </div>
-      </section>
-
-      <section>
-        <h3>Diplomacy & War</h3>
-        <select id="factionSelect"></select>
-        <div class="grid">
-          <button id="allianceBtn">Alliance</button>
-          <button id="tradeDealBtn">Trade Deal</button>
-          <button id="peaceBtn">Peace</button>
-          <button id="warBtn" type="button">Declare War</button>
-        </div>
-      </section>
-
-      <section>
-        <h3>Spy & Space</h3>
-        <div class="grid">
-          <button id="spyMissionBtn">Spy Mission</button>
-          <button id="satelliteBtn">Launch Satellite</button>
-          <button id="missileDefenseBtn">Missile Defense</button>
-          <button id="moonBaseBtn">Moon Base</button>
-        </div>
-        <label>Destination</label>
-        <select id="spaceDestination">
-          <option value="orbit">Low Orbit</option>
-          <option value="moon">Moon Expedition</option>
-          <option value="mars">Mars Mission</option>
-          <option value="asteroid">Asteroid Belt</option>
-          <option value="europa">Europa Probe</option>
-        </select>
-        <button id="exploreSpaceBtn">Explore Space</button>
-      </section>
-
-      <section>
-        <h3>Messages</h3>
-        <div id="messageHistory" class="log"></div>
-        <input id="messageInput" type="text" placeholder="Type message or command: defend, build house, farm, trade, patrol, research, space">
-        <button id="sendMessageBtn">Send</button>
-      </section>
-
-      <section>
-        <h3>Status Feed</h3>
-        <div id="statusFeed" class="log"></div>
-      </section>
+    <aside id="inventoryPanel" class="inventory hidden">
+      <h2>Inventory</h2>
+      <label for="blockSelect">Choose Block</label>
+      <select id="blockSelect"></select>
+      <div id="inventoryItems" class="inventory-items"></div>
+      <button id="convertImportedBtn">Convert Imported -> Blocks</button>
+      <div id="inventoryStats" class="inventory-stats"></div>
+      <p class="inventory-help">Left click: place/use selected | Right click or C: destroy/collect | Space jump | Shift sprint | Hold Space/Ctrl to rise or dive while swimming | E: inventory</p>
     </aside>
+
+    <div class="help-strip">
+      WASD move | Shift sprint | Mouse aim | C collect/dig | Right click destroy | Left click place/use | Space jump | Hold Space/Ctrl to rise or dive while swimming | N cycle stall offers | B buy trade | TNT explodes on contact | Fire can create biome portals from 3 stacked metal blocks
+    </div>
   </main>
 
-  <dialog id="mapDialog">
-    <h3>World Map</h3>
-    <canvas id="mapCanvas" width="640" height="480"></canvas>
-    <button id="closeMapBtn">Close</button>
-  </dialog>
-
-  <script type="module" src="./src/main.js?v=20260216-5"></script>
+  <script type="module" src="./src/main.js?v=20260312-smooth-move4"></script>
 </body>
 </html>
