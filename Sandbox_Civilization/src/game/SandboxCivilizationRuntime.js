@@ -13,17 +13,19 @@ const INTERACT_DISTANCE = 4.4;
 const EYE_HEIGHT = 0.72;
 const STEP_HEIGHT = 1.15;
 const GROUND_CONTACT_EPS = 0.18;
-const PLAYER_RUN_SPEED = 8;
-const PLAYER_SPRINT_SPEED = 12.5;
-const PLAYER_SWIM_SPEED = 6.5;
-const PLAYER_JUMP_SPEED = 13.5;
-const PLAYER_GROUND_ACCEL = 40;
-const PLAYER_GROUND_DRAG = 3.4;
-const PLAYER_SWIM_ACCEL = 18;
-const PLAYER_SWIM_DRAG = 2.8;
-const PLAYER_AIR_ACCEL = 22;
-const PLAYER_AIR_DRAG = 1.8;
-const CAMERA_SMOOTHING = 5;
+const PLAYER_RUN_SPEED = 52;
+const PLAYER_HOVER_SPEED = 24;
+const PLAYER_SWIM_SPEED = 14;
+const PLAYER_JUMP_SPEED = 18;
+const PLAYER_FLY_VERTICAL_SPEED = 18;
+const PLAYER_GROUND_ACCEL = 120;
+const PLAYER_GROUND_DRAG = 52;
+const PLAYER_AIR_ACCEL = 18;
+const PLAYER_AIR_DRAG = 9;
+const PLAYER_FLIGHT_ACCEL = 16;
+const PLAYER_FLIGHT_DRAG = 5.8;
+const PLAYER_SWIM_ACCEL = 12;
+const PLAYER_SWIM_DRAG = 5.2;
 const WILDLIFE_TARGET_BASE = 34;
 
 const ANIMAL_SPECIES = {
@@ -195,7 +197,6 @@ export class SandboxCivilizationGame {
     this.jumpQueued = false;
     this.inventoryButtonMap = {};
     this.lastDamageCause = "";
-    this.cameraPoint = null;
 
     const saved = this.load();
     this.state = saved || this.newState();
@@ -624,7 +625,6 @@ export class SandboxCivilizationGame {
     if (typeof s.player.velZ !== "number") s.player.velZ = 0;
     if (typeof s.player.hp !== "number") s.player.hp = 10;
     if (typeof s.player.flyMode !== "boolean") s.player.flyMode = false;
-    s.player.flyMode = false;
     if (typeof s.portalTravelCount !== "number") s.portalTravelCount = 0;
     if (typeof s.personSerial !== "number") s.personSerial = 0;
     if (typeof s.animalSerial !== "number") s.animalSerial = 0;
@@ -738,7 +738,6 @@ export class SandboxCivilizationGame {
     this.resizeCanvas();
     this.bindEvents();
     this.refreshEntityHeights();
-    this.resetCameraPoint();
     this.buildInventoryButtons();
     this.syncUi();
     requestAnimationFrame((ts) => this.loop(ts));
@@ -762,6 +761,9 @@ export class SandboxCivilizationGame {
       if (k === "space") {
         e.preventDefault();
         this.jumpQueued = true;
+      }
+      if (!e.repeat && k === "shift" && this.togglePlayerAirMode()) {
+        e.preventDefault();
       }
       if (!e.repeat && k === "c") {
         e.preventDefault();
@@ -861,6 +863,20 @@ export class SandboxCivilizationGame {
     return raw;
   }
 
+  togglePlayerAirMode() {
+    const p = this.state.player;
+    if (!p || this.isPlayerInWater()) return false;
+
+    const ground = this.getTopSolidZ(Math.floor(p.x), Math.floor(p.y)) + 1;
+    p.flyMode = !p.flyMode;
+    if (p.flyMode) {
+      p.z = Math.max(p.z, ground + 0.65);
+    }
+    p.velZ = 0;
+    this.jumpQueued = false;
+    return true;
+  }
+
   buildInventoryButtons() {
     if (!this.ui.inventoryItems) return;
     const order = ["wood", "stone", "metal", "tnt", "fire", "destroy"];
@@ -932,7 +948,7 @@ export class SandboxCivilizationGame {
         `Terrain: flat plains, terraced mountains, trees, and waterfalls.`,
         `Tip: click the world to lock mouse look. Q/E turn and R/F tilt when mouse is unlocked.`,
         `Tip: choose Destroy Tool in inventory if you want left click to dig instead of place.`,
-        `Tip: Space jumps on land, Shift sprints, and hold Space/Ctrl to move up or down while swimming.`,
+        `Tip: Space jumps on land. Shift toggles flight, and hold Space/Ctrl to move up or down only while flying or swimming.`,
         `Tip: press N near a stall to cycle offers and B to buy the highlighted trade.`,
         `Tip: shops open immediately and the blue pad around each stall is its private zone.`,
         `Tip: stack 3 metal blocks and ignite to open a portal into a different biome.`
@@ -990,7 +1006,6 @@ export class SandboxCivilizationGame {
 
     this.ensurePopulation();
     this.updatePlayer(dtS);
-    this.updateCameraPoint(dtS);
     this.updatePeople(dtS);
     this.updateAnimals(dtS, dt);
     this.updateZombies(dtS, dt);
@@ -1037,7 +1052,6 @@ export class SandboxCivilizationGame {
     this.state.player.velZ = 0;
     this.state.player.flyMode = false;
     this.jumpQueued = false;
-    this.resetCameraPoint();
     this.state.worldSpawn = {
       x: spawn.x,
       y: spawn.y,
@@ -1085,12 +1099,12 @@ export class SandboxCivilizationGame {
 
   updatePlayer(dtS) {
     const p = this.state.player;
-    p.flyMode = false;
     const inWater = this.isPlayerInWater();
-    const sprinting = Boolean(this.keys["shift"] && !inWater);
-    const speed = inWater ? PLAYER_SWIM_SPEED : (sprinting ? PLAYER_SPRINT_SPEED : PLAYER_RUN_SPEED);
+    if (inWater) p.flyMode = false;
+    const flyMode = Boolean(p.flyMode && !inWater);
+    const speed = inWater ? PLAYER_SWIM_SPEED : (flyMode ? PLAYER_HOVER_SPEED : PLAYER_RUN_SPEED);
     const currentGround = this.getTopSolidZ(Math.floor(p.x), Math.floor(p.y)) + 1;
-    const onGroundNow = !inWater && p.z <= currentGround + GROUND_CONTACT_EPS;
+    const onGroundNow = !inWater && !flyMode && p.z <= currentGround + GROUND_CONTACT_EPS;
     if (onGroundNow) {
       p.z = currentGround;
       if (p.velZ < 0) p.velZ = 0;
@@ -1122,41 +1136,23 @@ export class SandboxCivilizationGame {
     }
 
     const len = Math.hypot(mx, my);
-    const inputX = len > 0 ? (mx / len) : 0;
-    const inputY = len > 0 ? (my / len) : 0;
-    if (onGroundNow && !inWater) {
-      const drag = Math.exp(-PLAYER_GROUND_DRAG * dtS);
-      p.velX *= drag;
-      p.velY *= drag;
+    const desiredVelX = len > 0 ? (mx / len) * speed : 0;
+    const desiredVelY = len > 0 ? (my / len) * speed : 0;
+    if (onGroundNow && !inWater && !flyMode) {
       if (len > 0) {
-        p.velX += inputX * PLAYER_GROUND_ACCEL * dtS;
-        p.velY += inputY * PLAYER_GROUND_ACCEL * dtS;
-      }
-    } else if (inWater) {
-      const drag = Math.exp(-PLAYER_SWIM_DRAG * dtS);
-      p.velX *= drag;
-      p.velY *= drag;
-      if (len > 0) {
-        p.velX += inputX * PLAYER_SWIM_ACCEL * dtS;
-        p.velY += inputY * PLAYER_SWIM_ACCEL * dtS;
+        p.velX = desiredVelX;
+        p.velY = desiredVelY;
+      } else {
+        p.velX = 0;
+        p.velY = 0;
       }
     } else {
-      const drag = Math.exp(-PLAYER_AIR_DRAG * dtS);
-      p.velX *= drag;
-      p.velY *= drag;
-      if (len > 0) {
-        p.velX += inputX * PLAYER_AIR_ACCEL * dtS;
-        p.velY += inputY * PLAYER_AIR_ACCEL * dtS;
-      }
-    }
-    const maxHorizontalSpeed = onGroundNow && !inWater
-      ? speed
-      : (inWater ? speed : speed * 1.08);
-    const horizontalSpeed = Math.hypot(p.velX, p.velY);
-    if (horizontalSpeed > maxHorizontalSpeed) {
-      const scale = maxHorizontalSpeed / horizontalSpeed;
-      p.velX *= scale;
-      p.velY *= scale;
+      const response = len > 0
+        ? (inWater ? PLAYER_SWIM_ACCEL : (flyMode ? PLAYER_FLIGHT_ACCEL : PLAYER_AIR_ACCEL))
+        : (inWater ? PLAYER_SWIM_DRAG : (flyMode ? PLAYER_FLIGHT_DRAG : PLAYER_AIR_DRAG));
+      const blend = 1 - Math.exp(-response * dtS);
+      p.velX += (desiredVelX - p.velX) * blend;
+      p.velY += (desiredVelY - p.velY) * blend;
     }
     if (Math.abs(p.velX) < 0.01) p.velX = 0;
     if (Math.abs(p.velY) < 0.01) p.velY = 0;
@@ -1184,6 +1180,16 @@ export class SandboxCivilizationGame {
       if (p.z > waterTop + 0.55 && !risePressed) {
         p.z = waterTop + 0.55;
         p.velZ = Math.min(0, p.velZ);
+      }
+    } else if (flyMode) {
+      const targetVelZ = (risePressed ? PLAYER_FLY_VERTICAL_SPEED : 0) - (divePressed ? PLAYER_FLY_VERTICAL_SPEED : 0);
+      const verticalBlend = 1 - Math.exp(-22 * dtS);
+      p.velZ += (targetVelZ - p.velZ) * verticalBlend;
+      if (!risePressed && !divePressed) p.velZ = 0;
+      p.z += p.velZ * dtS;
+      if (p.z < ground) {
+        p.z = ground;
+        p.velZ = 0;
       }
     } else {
       const onGround = p.z <= ground + GROUND_CONTACT_EPS;
@@ -1808,7 +1814,6 @@ export class SandboxCivilizationGame {
     this.state.player.velZ = 0;
     this.state.player.flyMode = false;
     this.jumpQueued = false;
-    this.resetCameraPoint();
     this.state.worldSpawn = {
       x: spawn.x,
       y: spawn.y,
@@ -2242,7 +2247,6 @@ export class SandboxCivilizationGame {
       this.state.player.velZ = 0;
       this.state.player.flyMode = false;
       this.jumpQueued = false;
-      this.resetCameraPoint();
     }
   }
 
@@ -2669,26 +2673,7 @@ export class SandboxCivilizationGame {
     return `rgb(${fr},${fg},${fb})`;
   }
 
-  resetCameraPoint() {
-    const p = this.state.player;
-    this.cameraPoint = p ? { x: p.x, y: p.y, z: p.z + EYE_HEIGHT } : null;
-  }
-
-  updateCameraPoint(dtS) {
-    const p = this.state.player;
-    const target = { x: p.x, y: p.y, z: p.z + EYE_HEIGHT };
-    if (!this.cameraPoint) {
-      this.cameraPoint = { ...target };
-      return;
-    }
-    const blend = 1 - Math.exp(-CAMERA_SMOOTHING * dtS);
-    this.cameraPoint.x += (target.x - this.cameraPoint.x) * blend;
-    this.cameraPoint.y += (target.y - this.cameraPoint.y) * blend;
-    this.cameraPoint.z += (target.z - this.cameraPoint.z) * blend;
-  }
-
   getCameraPoint() {
-    if (this.cameraPoint) return this.cameraPoint;
     const p = this.state.player;
     return { x: p.x, y: p.y, z: p.z + EYE_HEIGHT };
   }
@@ -3174,7 +3159,6 @@ export class SandboxCivilizationGame {
     const cw = this.canvas.clientWidth;
     const ch = this.canvas.clientHeight;
     const p = this.state.player;
-    const camPoint = this.getCameraPoint();
     const inWater = this.isPlayerInWater();
     const weather = this.state.weather.type;
 
@@ -3192,8 +3176,8 @@ export class SandboxCivilizationGame {
     c.fillStyle = inWater ? "rgba(37,84,142,0.55)" : "rgba(52,96,134,0.9)";
     c.fillRect(0, horizon, cw, ch - horizon);
 
-    const px = Math.floor(camPoint.x);
-    const py = Math.floor(camPoint.y);
+    const px = Math.floor(p.x);
+    const py = Math.floor(p.y);
     const renderables = [];
 
     for (let x = px - RENDER_RADIUS; x <= px + RENDER_RADIUS; x += 1) {

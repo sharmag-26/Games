@@ -1,0 +1,4 @@
+[build]
+  base = "Sandbox_Civilization"
+  command = "npm run build"
+  publish = "."
